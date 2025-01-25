@@ -57,20 +57,20 @@ Common Git Commands (feel free to update what you found useful)
     #Push Your Branch
     git push -u origin feature/your-feature-name
 
-Common Poetry Commands '''bash
-    #Add a new production dependency
-    poetry add numpy pandas
-    #Add a development dependency
-    poetry add --group dev pytest mypy
-    #Update dependencies
-    poetry update
-    #Remove a dependency
-    poetry remove numpy
-    #Run scripts defined in pyproject.toml
-    poetry run python your_script.py
-    #Run tests
-    poetry run pytest
-'''
+    Common Poetry Commands 
+        #Add a new production dependency
+        poetry add numpy pandas
+        #Add a development dependency
+        poetry add --group dev pytest mypy
+        #Update dependencies
+        poetry update
+        #Remove a dependency
+        poetry remove numpy
+        #Run scripts defined in pyproject.toml
+        poetry run python your_script.py
+        #Run tests
+        poetry run pytest
+
 
 Signed Team members:
 - Jia Yi Khoo
