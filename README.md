@@ -9,7 +9,7 @@ Project structure:
 
 Signed Team members:
 - Jia Yi Khoo
--
+- Joey Surapakdi
 -
 -
 - Maciej Kowalski
