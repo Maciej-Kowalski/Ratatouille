@@ -58,6 +58,7 @@ Common Git Commands (feel free to update what you found useful)
         git push -u origin feature/your-feature-name
 
 Common Poetry Commands 
+        TEST
         #Add a new production dependency
         poetry add numpy pandas
         #Add a development dependency
