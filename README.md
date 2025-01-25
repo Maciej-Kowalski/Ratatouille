@@ -7,10 +7,9 @@ Project structure:
 - prototypes - contain working instantiations of the mouse with a given settings (e.g. just read IMU data, ekf,mapping) that can be used for testing/demo
 
 
-
 Signed Team members:
 - Jia Yi Khoo
 -
 -
 -
--
+- Maciej Kowalski
