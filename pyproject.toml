@@ -3,6 +3,9 @@ name = "ratatouille"
 version = "0.1.0"
 description = ""
 authors = ["Maciej <maciejkkowalski1@gmail.com>"]
+packages = [
+    { include = "ratatouille", from = "src" }
+]
 readme = "README.md"
 
 [tool.poetry.dependencies]
