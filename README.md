@@ -21,7 +21,7 @@ Getting Started
             pip install poetry
 
 Workflow template
-    TEST
+ ```bash
         # First, ensure you're in the project root directory
         # 1. Check current Poetry environment
         poetry env list
@@ -48,17 +48,19 @@ Workflow template
             - Describe your changes
             - Request review from team members
         """
-
+```
 Common Git Commands (feel free to update what you found useful)
+```bash
         #Stage your changes
         git add .
         #Commit with a descriptive message
         git commit -m "Add detailed description of your changes"
         #Push Your Branch
         git push -u origin feature/your-feature-name
+```
 
 Common Poetry Commands 
-        TEST
+```bash
         #Add a new production dependency
         poetry add numpy pandas
         #Add a development dependency
@@ -71,7 +73,7 @@ Common Poetry Commands
         poetry run python your_script.py
         #Run tests
         poetry run pytest
-
+```
 
 Signed Team members:
 - Jia Yi Khoo
