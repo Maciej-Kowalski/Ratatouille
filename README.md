@@ -21,6 +21,7 @@ Getting Started
             pip install poetry
 
 Workflow template
+    TEST
         # First, ensure you're in the project root directory
         # 1. Check current Poetry environment
         poetry env list
