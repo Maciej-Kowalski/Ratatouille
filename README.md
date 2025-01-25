@@ -75,7 +75,7 @@ Working on the project
 
 Signed Team members:
 - Jia Yi Khoo
--
+- Joey Surapakdi
 -
 -
 - Maciej Kowalski
