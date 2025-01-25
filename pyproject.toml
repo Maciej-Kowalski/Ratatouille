@@ -9,6 +9,8 @@ readme = "README.md"
 python = "^3.11"
 pyserial = "^3.5"
 pynput = "^1.7.7"
+numpy = "^2.2.0"
+ahrs = "^0.3.1"
 
 
 [build-system]

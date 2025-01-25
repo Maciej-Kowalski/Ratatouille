@@ -20,6 +20,9 @@ mouse = Controller()
 ser = serial.Serial('COM11', baudrate=115200, timeout=1)
 
 START_BYTE = -128
+gyr_alpha = 0.1
+acc_alpha = 0.5
+
 def StartStream():
     Aligned = False
     while Aligned == False:
@@ -36,7 +39,7 @@ def StartStream():
 
         else:
             #pass
-            print("Byte not start byte")   
+            print("Byte not start byte -", int.from_bytes(start_byte, 'big', signed=True))
                 #mouse.move(value1,value2)
 
 def Unpack(mode, data):
@@ -72,10 +75,43 @@ def Unpack(mode, data):
         print("Invalid mode entered")
 
 def PerformEKF():
+    flag = 1
+    gyr_prev = []
+    acc_prev = []
+    gyr_cur = []
+    acc_cur = []
+
     while True:
         task = IMUDataQueue.get()
         if task is not None:
+            if flag == 1:
+                acc, gyro = task
+                acc_array = np.array([acc],dtype = float)
+                gyro_array = np.array([gyro],dtype = float)
+                acc_prev = acc_array
+                gyr_prev = gyro_array
+                flag = 0
+
             acc, gyro = task
+            acc_array = np.array([acc],dtype = float)
+            gyro_array = np.array([gyro],dtype = float)
+
+            # Pre-filter
+            acc_cur = (acc_alpha * acc_prev) + ((1 - acc_alpha) * (acc_array))
+            gyr_cur = (gyr_alpha * gyr_prev) + ((1 - gyr_alpha) * (gyro_array))
+
+            acc_prev = acc_cur
+            gyr_prev = gyr_cur
+
+            ekf = EKF(gyr_cur, acc_cur,frequency=19.0,frame='ENU')
+            #ekf = EKF(gyr_cur, acc_cur,frequency=100.0)
+            '''hor = int(ekf.Q[0,1]*5)
+            ver = int(ekf.Q[0,2]*5)
+            print(hor," ",ver)
+            mouse.move(hor, ver)'''
+            hor = int(((ekf.Q[0,1]+1)/2)*(1920-1))
+            ver = mouse.position
+            #mouse.position = (hor, ver[1])
             print(f"gyro: {[f'{x:8.3g}' for x in gyro]}, acc: {[f'{x:8.3g}' for x in acc]}")
             IMUDataQueue.task_done()
         else:
@@ -90,7 +126,7 @@ def AnalyseAnalog():
                 mouse.click(Button.left, 1)
             if Y <= 500:
                 mouse.click(Button.right, 1)
-            #print(X, " ", Y)
+            print(X, " ", Y)
             AnalogDataQueue.task_done()
         else:
             print("AnalogData slow")
