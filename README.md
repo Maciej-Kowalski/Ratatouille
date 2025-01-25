@@ -78,6 +78,6 @@ Common Poetry Commands
 Signed Team members:
 - Jia Yi Khoo
 - Joey Surapakdi
--
+- Timofei Suruzhiu
 -
 - Maciej Kowalski
