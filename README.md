@@ -21,32 +21,33 @@ Getting Started
             pip install poetry
 
 Workflow template
-    # First, ensure you're in the project root directory
-    # 1. Check current Poetry environment
-    poetry env list
-    # 2. Activate the poetry environment (if not already active)
-    poetry shell
-    # 3. Update dependencies BEFORE pulling (ensures local .toml changes are applied first)
-    poetry install
-    # 4. Pull latest changes
-    git pull origin main
-    # 5. Update dependencies again (in case pyproject.toml changed)
-    poetry install
-    # 6. Create and switch to a new feature 
-    branchgit checkout -b feature/improved-data-processor#
-    # Make your changes 
-    # Work on your code... 
-    git add . 
-    git commit -m "Enhance data processing with new filtering method"  
-    # Push the branch to GitHub 
-    git push -u origin feature/improved-data-processor
-    """Create a Pull Request:
-        - Go to GitHub repository
-        - Click "Pull Requests"
-        - Select your branch
-        - Describe your changes
-        - Request review from team members
-    """
+    TEST
+        # First, ensure you're in the project root directory
+        # 1. Check current Poetry environment
+        poetry env list
+        # 2. Activate the poetry environment (if not already active)
+        poetry shell
+        # 3. Update dependencies BEFORE pulling (ensures local .toml changes are applied first)
+        poetry install
+        # 4. Pull latest changes
+        git pull origin main
+        # 5. Update dependencies again (in case pyproject.toml changed)
+        poetry install
+        # 6. Create and switch to a new feature 
+        branchgit checkout -b feature/improved-data-processor#
+        # Make your changes 
+        # Work on your code... 
+        git add . 
+        git commit -m "Enhance data processing with new filtering method"  
+        # Push the branch to GitHub 
+        git push -u origin feature/improved-data-processor
+        """Create a Pull Request:
+            - Go to GitHub repository
+            - Click "Pull Requests"
+            - Select your branch
+            - Describe your changes
+            - Request review from team members
+        """
 
 Common Git Commands (feel free to update what you found useful)
     #Stage your changes
