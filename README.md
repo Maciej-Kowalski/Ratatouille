@@ -6,3 +6,10 @@ Project structure:
 - audio - same as above for mic
 
 
+
+Signed Team members:
+- Jia Yi Khoo
+-
+-
+-
+-
