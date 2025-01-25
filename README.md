@@ -57,7 +57,7 @@ Common Git Commands (feel free to update what you found useful)
     #Push Your Branch
     git push -u origin feature/your-feature-name
 
-Common Poetry Commands
+Common Poetry Commands '''bash
     #Add a new production dependency
     poetry add numpy pandas
     #Add a development dependency
@@ -70,7 +70,7 @@ Common Poetry Commands
     poetry run python your_script.py
     #Run tests
     poetry run pytest
-
+'''
 
 Signed Team members:
 - Jia Yi Khoo
