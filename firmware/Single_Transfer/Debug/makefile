@@ -64,8 +64,8 @@ all: main-build
 main-build: Single_Transfer.elf secondary-outputs
 
 # Tool invocations
-Single_Transfer.elf Single_Transfer.map: $(OBJS) $(USER_OBJS) C:\Users\joham\STM32CubeIDE\workspace_1.16.1\Single_Transfer\STM32F401RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Single_Transfer.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\STM32CubeIDE\workspace_1.16.1\Single_Transfer\STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Single_Transfer.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Single_Transfer.elf Single_Transfer.map: $(OBJS) $(USER_OBJS) C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\Single_Transfer\STM32F401RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "Single_Transfer.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\Single_Transfer\STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Single_Transfer.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
