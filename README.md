@@ -79,5 +79,6 @@ Signed Team members:
 - Jia Yi Khoo
 - Joey Surapakdi
 - Timofei Suruzhiu
--
+- Raven Valencia
 - Maciej Kowalski
+
