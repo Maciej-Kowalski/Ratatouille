@@ -91,5 +91,3 @@ class Pipeline:
         print("\nShutting down pipeline...")
         self.running = False
         sys.exit(0)
-
-print("Hello world")
