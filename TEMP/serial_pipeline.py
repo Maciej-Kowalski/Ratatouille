@@ -4,9 +4,17 @@ import signal
 import sys
 import time
 import serial
+import struct
+#import pdb
+
+START_BYTE = 128
+IMU_PACKET_LENGTH = 25
 
 class CursorMouse:
     def __init__(self, serial_settings, filter, output):
+
+        self.ser = serial.Serial(**serial_settings)
+
         self.filter = filter
         self.output = output
 
@@ -24,14 +32,14 @@ class CursorMouse:
         self.running = True
 
         # Start the data streaming thread
-        # stream_thread = threading.Thread(target=self.data_source, daemon=True)
-        # self.threads.append(stream_thread)
+        stream_thread = threading.Thread(target=self.start_stream, args=(self.raw_data_queue, self.stop_event))
+        self.threads.append(stream_thread)
 
-        process_thread = threading.Thread(target=self.filter, args=(self.stop_event))
+        process_thread = threading.Thread(target=self.filter, args=(self.raw_data_queue, self.processed_data_queue, self.stop_event))
         self.threads.append(process_thread)
 
         # Start output threads
-        output_thread = threading.Thread(target=self.output, args=(self.stop_event))
+        output_thread = threading.Thread(target=self.output, args=(self.processed_data_queue, self.stop_event))
         self.threads.append(output_thread)
 
         # Start all threads
@@ -46,32 +54,69 @@ class CursorMouse:
             self.running = False
             self.stop_event.set()
             self.shutdown()
+    
+    def start_stream(self, input_queue, stop_event):
+        while not stop_event.is_set():
+            data = self.ser.read(IMU_PACKET_LENGTH)
+            if data and data[0] == START_BYTE:  # Check for start byte (128)
+                    self.unpack(data[1:IMU_PACKET_LENGTH])
+            elif data:
+                print("First byte - ", data[0])
+            else:
+                print("No data")
+        print("start_stream_stopped")
 
+    def unpack(self, data):
+        if len(data) == IMU_PACKET_LENGTH-1:
+            g_f32 = struct.unpack('fff', data[0:12])
+            a_f32 = struct.unpack('fff', data[12:24])
+            self.raw_data_queue.put((g_f32, a_f32))
+        else:
+            print("Data packet length invalid - ", len(data), ", expected ", IMU_PACKET_LENGTH-1)
+        
     def shutdown(self):
         """Gracefully stop all threads."""
         print("\nShutting down...")
         self.running = False
-        sys.exit(0)
+        for thread in self.threads:
+            thread.join()
+        #sys.exit(0)
 
 
 # Example of thread functions that take stop_event as an argument
-def printProcessing(stop_event):
+def no_filter(input_queue, output_queue, stop_event):
     while not stop_event.is_set():
-        print("Processing thread")
-        time.sleep(1)
+        try:
+            task = input_queue.get(timeout = 0.01)
+            output_queue.put(task)
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+    print("no_filter_stopped")
 
-def printOutput(stop_event):
+def print_raw_IMU(input_queue, stop_event):
     while not stop_event.is_set():
-        print("Output thread")
-        time.sleep(1)
+        try:
+            gyro, acc = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            print(f"gyro: {[f'{x:8g}' for x in gyro]}, acc: {[f'{x:8.3g}' for x in acc]}")
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+    print("raw_IMU_stopped")
 
 # Example usage
 print("test")
 
-serial_settings = {
-    "port": "COM11",
-    "baudrate": 115200,
-    "timeout": 1
-}
-prototype = CursorMouse(serial_settings, filter=printProcessing, output=printOutput)
-prototype.start()
+def process():
+    try:
+        serial_settings = {
+            "port": "COM16",
+            "baudrate": 115200,
+            "timeout": 1
+        }
+        prototype = CursorMouse(serial_settings, filter=no_filter, output=print_raw_IMU)
+        prototype.start()
+    except Exception as e:
+        print(e)
+
+process()
