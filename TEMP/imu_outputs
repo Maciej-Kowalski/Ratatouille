@@ -1,0 +1,14 @@
+def print_IMU(input_queue, stop_event):
+    #your setup
+    while not stop_event.is_set():
+        task = input_queue.get()
+        #Your code
+        #ekf = EKF(gyr_cur, acc_cur,frequency=100.0)
+        gyro, acc = unpack(task)
+        print(f"gyro: {[f'{x:8.3g}' for x in gyro]}, acc: {[f'{x:8.3g}' for x in acc]}")
+        #Your code END
+        input_queue.task_done()
+    
+def unpack(task):
+    #do conversion
+    return gyro, acc
