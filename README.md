@@ -1,3 +1,7 @@
+IMPORTANT NOTICE
+At this point poetry is giving a lot of trouble and we'll deal with it after Wednesday. For now place all files under TEMP for easy importing. Only use poetry for virtual environments and dependencies if it works for you, otherwise manage it manually. Ignore the rest of the readme
+IMPORTANT NOTICE END
+
 Project structure:
 - legacy firmware - any arduino or stm32 code you used to test your bits without the whole Maciej's data pipeline that you want in the cloud
 - legacy - your current code that is not integrated into Maciej's pipeline
@@ -20,7 +24,7 @@ Getting Started
         Install Poetry (If not already installed)
             pip install poetry
 
-Workflow template
+Workflow template (TO BE UPDATED USE AT YOUR OWN RISK)
  ```bash
         # First, ensure you're in the project root directory
         # 1. Check current Poetry environment
