@@ -1,3 +1,16 @@
+#the most up-to-date pipeline structure
+def no_filter(input_queue, output_queue, stop_event):
+    while not stop_event.is_set():
+        try:
+            task = input_queue.get(timeout = 0.01)
+            #do something
+            output_queue.put(task)
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+    print("no_filter_stopped")
+
+#needs some work
 def EKF(input_queue, output_queue, stop_event):
     flag = 1
     gyr_prev = []

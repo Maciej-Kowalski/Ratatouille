@@ -83,29 +83,6 @@ class CursorMouse:
             thread.join()
         #sys.exit(0)
 
-
-# Example of thread functions that take stop_event as an argument
-def no_filter(input_queue, output_queue, stop_event):
-    while not stop_event.is_set():
-        try:
-            task = input_queue.get(timeout = 0.01)
-            #do something
-            output_queue.put(task)
-            input_queue.task_done()
-        except queue.Empty:
-            continue
-    print("no_filter_stopped")
-
-def print_raw_IMU(input_queue, stop_event):
-    while not stop_event.is_set():
-        try:
-            gyro, acc = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
-            print(f"gyro: {[f'{x:8.4f}' for x in gyro]}, acc: {[f'{x:8.4f}' for x in acc]}")
-            input_queue.task_done()
-        except queue.Empty:
-            continue
-    print("raw_IMU_stopped")
-
 class ClickMouse:
     def __init__(self, serial_settings, filter, output):
 
@@ -176,30 +153,3 @@ class ClickMouse:
         for thread in self.threads:
             thread.join()
         #sys.exit(0)
-
-def print_raw_audio(input_queue, stop_event):
-    while not stop_event.is_set():
-        try:
-            audio1, audio2 = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
-            print(f"audio1: {audio1:8.4f}, acc: {[f'{x:8.4f}' for x in acc]}")
-            input_queue.task_done()
-        except queue.Empty:
-            continue
-    print("raw_IMU_stopped")
-
-# Example usage
-print("test")
-
-def process():
-    try:
-        serial_settings = {
-            "port": "COM16",
-            "baudrate": 115200,
-            "timeout": 1
-        }
-        prototype = CursorMouse(serial_settings, filter=no_filter, output=print_raw_IMU)
-        prototype.start()
-    except Exception as e:
-        print(e)
-
-process()
