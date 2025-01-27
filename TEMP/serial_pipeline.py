@@ -98,7 +98,7 @@ def print_raw_IMU(input_queue, stop_event):
     while not stop_event.is_set():
         try:
             gyro, acc = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
-            print(f"gyro: {[f'{x:8g}' for x in gyro]}, acc: {[f'{x:8.3g}' for x in acc]}")
+            print(f"gyro: {[f'{x:8.4f}' for x in gyro]}, acc: {[f'{x:8.4f}' for x in acc]}")
             input_queue.task_done()
         except queue.Empty:
             continue
