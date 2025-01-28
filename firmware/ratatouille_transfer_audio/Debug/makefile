@@ -39,34 +39,34 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := ratatouille_transfer_IMU
+BUILD_ARTIFACT_NAME := ratatouille_transfer_audio
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-ratatouille_transfer_IMU.elf \
+ratatouille_transfer_audio.elf \
 
 MAP_FILES += \
-ratatouille_transfer_IMU.map \
+ratatouille_transfer_audio.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-ratatouille_transfer_IMU.list \
+ratatouille_transfer_audio.list \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: ratatouille_transfer_IMU.elf secondary-outputs
+main-build: ratatouille_transfer_audio.elf secondary-outputs
 
 # Tool invocations
-ratatouille_transfer_IMU.elf ratatouille_transfer_IMU.map: $(OBJS) $(USER_OBJS) C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\ratatouille_transfer_IMU\STM32WB55RGVX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "ratatouille_transfer_IMU.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\ratatouille_transfer_IMU\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ratatouille_transfer_IMU.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+ratatouille_transfer_audio.elf ratatouille_transfer_audio.map: $(OBJS) $(USER_OBJS) C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\ratatouille_transfer_audio\STM32WB55RGVX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "ratatouille_transfer_audio.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\ratatouille_transfer_audio\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="ratatouille_transfer_audio.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -75,14 +75,14 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-ratatouille_transfer_IMU.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "ratatouille_transfer_IMU.list"
+ratatouille_transfer_audio.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "ratatouille_transfer_audio.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) default.size.stdout ratatouille_transfer_IMU.elf ratatouille_transfer_IMU.list ratatouille_transfer_IMU.map
+	-$(RM) default.size.stdout ratatouille_transfer_audio.elf ratatouille_transfer_audio.list ratatouille_transfer_audio.map
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST)

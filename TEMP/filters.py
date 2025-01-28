@@ -15,46 +15,20 @@ def no_filter(input_queue, output_queue, stop_event):
             continue
     print("no_filter_stopped")
 
-#needs some work
 def EKF(input_queue, output_queue, stop_event):
-    flag = 1
-    gyr_prev = []
-    acc_prev = []
-    gyr_cur = []
-    acc_cur = []
+    #setup your variables and flags
 
     while not stop_event.is_set():
-        task = input_queue.get()
-        #Your code
-        if task is not None:
-            if flag == 1:
-                acc, gyro = task
-                acc_array = np.array([acc],dtype = float)
-                gyro_array = np.array([gyro],dtype = float)
-                acc_prev = acc_array
-                gyr_prev = gyro_array
-                flag = 0
+        try:
+            gyro, acc = input_queue.get(timeout = 0.01)
+            
+            #Your code
 
-            acc, gyro = task
-            acc_array = np.array([acc],dtype = float)
-            gyro_array = np.array([gyro],dtype = float)
-
-            # Pre-filter
-            acc_cur = (acc_alpha * acc_prev) + ((1 - acc_alpha) * (acc_array))
-            gyr_cur = (gyr_alpha * gyr_prev) + ((1 - gyr_alpha) * (gyro_array))
-
-            acc_prev = acc_cur
-            gyr_prev = gyr_cur
-
-            ekf = EKF(gyr_cur, acc_cur,frequency=19.0,frame='ENU')
-
-            #Your code END
-
-            inputqueue.task_done()
             outputqueue.put(your_data)
-
-        else:
-            print("IMUData slow")
+            inputqueue.task_done()
+        except queue.Empty:
+            continue
+    print("EKF_stopped")
 
 
 #####################################

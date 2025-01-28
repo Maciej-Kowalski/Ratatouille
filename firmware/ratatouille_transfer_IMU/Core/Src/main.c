@@ -171,12 +171,15 @@ int main(void)
   while (BMI160_init(imu_t) == 1); // waits for IMU to be ready
 
   if (imu_t.INIT_OK_i8 != TRUE){
-	  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, SET);
+	  //HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, SET);
   }
 
   /* USER CODE END 2 */
 
-
+  /* Initialize leds */
+  BSP_LED_Init(LED_BLUE);
+  BSP_LED_Init(LED_GREEN);
+  BSP_LED_Init(LED_RED);
 
   /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
   BSP_PB_Init(BUTTON_SW1, BUTTON_MODE_EXTI);
@@ -219,7 +222,8 @@ int main(void)
 
 		  prepare_data_packet_IMU(g_f32,a_f32,USB_buffer,&packet_length);
 		  CDC_Transmit_FS(USB_buffer, packet_length);
-		  HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
+		  BSP_LED_Toggle(LED_GREEN);
+		  //HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
 		  //snprintf(msg, sizeof(msg), "a: %.2f, g: %.2f", a_f32[0], g_f32[0]);
 		  //CDC_Transmit_FS((uint8_t *)msg, strlen(msg));
 
@@ -459,7 +463,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 10;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 256000-1;
+  htim2.Init.Period = 64000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -507,7 +511,6 @@ static void MX_DMA_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
@@ -515,16 +518,6 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LD2_Pin|LD3_Pin|LD1_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pins : LD2_Pin LD3_Pin LD1_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin|LD3_Pin|LD1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
