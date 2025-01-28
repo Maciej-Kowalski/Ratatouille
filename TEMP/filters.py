@@ -163,8 +163,8 @@ def complementary_filter(input_queue, output_queue, stop_event):
                 # Gyroscope scaling (assuming scale of 262.4 LSB/deg/s from datasheet)
                 #gyroscale = 1 / 262.4
                 gyroscale = 1
-                pitch_g = gx * gyroscale * math.pi / 180  # Convert to radians
-                roll_g = gy * gyroscale * math.pi / 180
+                pitch_g = gx  #gyroscale * math.pi / 180  # Convert to radians
+                roll_g = gy # gyroscale * math.pi / 180
 
                 # Accelerometer angle estimation (in degrees)
                 pitch_a = math.atan2(ay, math.sqrt(ax**2 + az**2)) * 180 / math.pi
