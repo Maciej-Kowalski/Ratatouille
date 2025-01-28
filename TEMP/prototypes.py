@@ -3,10 +3,12 @@ from serial_pipeline import ClickMouse
 from serial_pipeline import ClickMouseBuffered
 from filters import no_filter
 from filters import complementary_filter
+from filters import EK_filter
 from outputs import print_counter_audio
 from outputs import print_counter_audio_buffered
 from outputs import print_raw_IMU
 from outputs import print_comp_IMU
+from outputs import print_EK_filter_IMU
 
 def audioBuff():
     try:
@@ -39,7 +41,7 @@ def IMU():
             "baudrate": 115200,
             "timeout": 1
         }
-        prototype = CursorMouse(serial_settings, filter=complementary_filter, output=print_comp_IMU)
+        prototype = CursorMouse(serial_settings, filter=EK_filter, output=print_EK_filter_IMU)
         prototype.start()
     except Exception as e:
         print(e)

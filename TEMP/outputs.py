@@ -1,6 +1,8 @@
 import queue
 import threading
 import time
+from pynput.mouse import Button, Controller
+from screeninfo import get_monitors
 
 def print_raw_IMU(input_queue, stop_event):
     while not stop_event.is_set():
@@ -25,6 +27,30 @@ def print_comp_IMU(input_queue, stop_event):
             continue
     print("comp_IMU_stopped")
 
+def print_EK_filter_IMU(input_queue, stop_event):
+    while not stop_event.is_set():
+        try:
+            roll, pitch = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            print(f"roll: {roll:8.4f}, pitch: {pitch:8.4f}' for x in pitch")
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+    print("EKF_IMU_stopped")
+
+def mouse_cursor_mapping(input_queue, stop_event):
+    mouse = Controller()
+    while not stop_event.is_set():
+        try:
+            roll, pitch = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            x, y = remap(roll, pitch)
+            mouse.position = (x, y)
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+    print("cursor_mouse_stopped")
+
+def remap(roll, pitch):
+    return int(), int()
 def print_raw_audio(input_queue, stop_event):
     while not stop_event.is_set():
         try:
@@ -67,3 +93,10 @@ def print_counter_audio_buffered(input_queue, stop_event, buffer_size):
         except queue.Empty:
             continue
     print("print_counter_audio_buffered_stopped")
+
+def test_monitors():
+    m = get_monitors()
+    print(type(m[0]))
+
+print("test")
+#test_monitors()

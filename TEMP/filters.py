@@ -8,9 +8,9 @@ from ahrs.filters import EKF
 import ahrs
 from ahrs.common.orientation import acc2q
 from ahrs.common.orientation import q2rpy
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from matplotlib import style
+#import matplotlib.pyplot as plt
+#import matplotlib.animation as animation
+#from matplotlib import style
 ##### EKF libraries end #####
 
 #the most up-to-date pipeline structure
@@ -25,7 +25,8 @@ def no_filter(input_queue, output_queue, stop_event):
             continue
     print("no_filter_stopped")
 
-def EKF(input_queue, output_queue, stop_event):
+def EK_filter(input_queue, output_queue, stop_event):
+    print("ek_filter run")
     ##### Setup your variables and flags str #####
     # predict_period = 0.01
     # update_period = 0.05
@@ -33,6 +34,7 @@ def EKF(input_queue, output_queue, stop_event):
     # update_clock = 0.0
     gyr_alpha = 0.05
     acc_alpha = 0.2
+    flg = 0
     
     gyr_prev = []
     acc_prev = []
@@ -42,7 +44,6 @@ def EKF(input_queue, output_queue, stop_event):
     Qold = np.zeros((1, 4))
     Qnew = np.zeros((1, 4))
     r2d = 57.2958
-    your_data = []
     
     ##### Plotting var str #####
     # plot_count = 0
@@ -61,12 +62,15 @@ def EKF(input_queue, output_queue, stop_event):
     ##### Setup your variables and flags end #####
 
     ##### Initialise EKF str #####
-    while not gyr_prev:
+    while flg != 1:
         try:
             gyr_prev, acc_prev = input_queue.get(timeout = 0.01)
-            Qold = acc2q(acc_prev[0]) # Get the first quaternion state array by converting accelerometer data into a quaternion
+            gyr_prev = np.array([gyr_prev],dtype="float")
+            acc_prev = np.array([acc_prev],dtype="float")
+            Qold = acc2q(acc_prev) # Get the first quaternion state array by converting accelerometer data into a quaternion
             #ekf = EKF(frequency=17.3,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # EKF init from old code
             ekf = EKF(frequency=90,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # Initialise EKF function. Noise = [Process covariance, Measurement covariance]
+            flg = 1
         except queue.Empty:
             continue
     ##### Initialise EKF end #####
@@ -74,6 +78,8 @@ def EKF(input_queue, output_queue, stop_event):
     while not stop_event.is_set():
         try:
             gyro, acc = input_queue.get(timeout = 0.01)
+            gyro = np.array([gyro],dtype="float")
+            acc = np.array([acc],dtype="float")
             
             #Your code
 
@@ -89,7 +95,6 @@ def EKF(input_queue, output_queue, stop_event):
             Qnew = ekf.update(Qold, gyr_cur[0], acc_cur[0]) # Update EKF function. See: https://github.com/Mayitzin/ahrs/blob/master/ahrs/filters/ekf.py#L1336
             Qold = Qnew
             angles = q2rpy(Qnew)*r2d # Get euler angles from quaternions 
-            your_data = [angles[1], angles[2]] # Send array [Roll, Pitch]
             # print(f"Q: {[f'{(100*x):8.2f}' for x in Qold]}, E: {[f'{(100*x):8.2f}' for x in angles]}") # Print quat and euler output of update
             ##### EKF update end #####
 
@@ -116,8 +121,8 @@ def EKF(input_queue, output_queue, stop_event):
             #     plot_count = 1 + plot_count
             ##### Graphing end #####
 
-            outputqueue.put(your_data)
-            inputqueue.task_done()
+            output_queue.put((angles[0],angles[1]))
+            input_queue.task_done()
         except queue.Empty:
             continue
     print("EKF_stopped")
