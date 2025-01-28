@@ -121,7 +121,7 @@ def EK_filter(input_queue, output_queue, stop_event):
             #     plot_count = 1 + plot_count
             ##### Graphing end #####
 
-            output_queue.put((angles[0],angles[1]))
+            output_queue.put((angles[0],angles[1],angles[2]))
             input_queue.task_done()
         except queue.Empty:
             continue

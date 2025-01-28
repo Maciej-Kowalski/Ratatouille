@@ -30,8 +30,8 @@ def print_comp_IMU(input_queue, stop_event):
 def print_EK_filter_IMU(input_queue, stop_event):
     while not stop_event.is_set():
         try:
-            roll, pitch = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
-            print(f"roll: {roll:8.4f}, pitch: {pitch:8.4f}' for x in pitch")
+            roll, pitch, yaw = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            print(f"roll: {roll:8.4f}, pitch: {pitch:8.4f}, yaw: {yaw:8.4f}")
             input_queue.task_done()
         except queue.Empty:
             continue
@@ -39,18 +39,21 @@ def print_EK_filter_IMU(input_queue, stop_event):
 
 def mouse_cursor_mapping(input_queue, stop_event):
     mouse = Controller()
+    screen = get_monitors()
     while not stop_event.is_set():
         try:
-            roll, pitch = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
-            x, y = remap(roll, pitch)
+            roll, pitch, yaw = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            x = remap(roll, (0,screen[0].width),(-40,40))
+            y = remap(pitch, (0,screen[0].height),(50,-50))
             mouse.position = (x, y)
             input_queue.task_done()
         except queue.Empty:
             continue
     print("cursor_mouse_stopped")
 
-def remap(roll, pitch):
-    return int(), int()
+def remap(value, new_range, old_range):
+    return int((new_range[1] - new_range[0])*(value - old_range[0]) / (old_range[1] - old_range[0]) + new_range[0])
+
 def print_raw_audio(input_queue, stop_event):
     while not stop_event.is_set():
         try:
@@ -96,7 +99,4 @@ def print_counter_audio_buffered(input_queue, stop_event, buffer_size):
 
 def test_monitors():
     m = get_monitors()
-    print(type(m[0]))
-
-print("test")
-#test_monitors()
+    print(m[0].width)
