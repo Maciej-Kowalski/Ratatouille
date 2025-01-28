@@ -156,12 +156,13 @@ def complementary_filter(input_queue, output_queue, stop_event):
                 gx, gy, gz = gyro_array
 
                 # Scale accelerometer values (assuming LSB of 16384 for accelerometer)
-                ax /= 16384
-                ay /= 16384
-                az /= 16384
+                #ax /= 16384
+                #ay /= 16384
+                #az /= 16384
 
                 # Gyroscope scaling (assuming scale of 262.4 LSB/deg/s from datasheet)
-                gyroscale = 1 / 262.4
+                #gyroscale = 1 / 262.4
+                gyroscale = 1
                 pitch_g = gx * gyroscale * math.pi / 180  # Convert to radians
                 roll_g = gy * gyroscale * math.pi / 180
 
