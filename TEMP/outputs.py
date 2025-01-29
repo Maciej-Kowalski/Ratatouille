@@ -20,7 +20,7 @@ def print_comp_IMU(input_queue, stop_event):
         try:
             pitch, roll = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
             if time.perf_counter()-t > 0.05:
-                print(f"pitch: {pitch:8.4f}, roll: {roll:8.4f}")
+                print(f"pitch_est: {pitch:8.4f}, roll_est: {roll:8.4f}")
                 t = time.perf_counter()
             input_queue.task_done()
         except queue.Empty:
