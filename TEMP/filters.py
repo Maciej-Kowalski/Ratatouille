@@ -34,7 +34,7 @@ def EK_filter(input_queue, output_queue, stop_event):
     # update_clock = 0.0
     gyr_alpha = 0.05
     acc_alpha = 0.2
-    salpha = 0.65
+    salpha = 0.75 # Originally 0.65
     flg = 0
     
     gyr_prev = []
@@ -74,6 +74,7 @@ def EK_filter(input_queue, output_queue, stop_event):
             init_angles = q2rpy(Qold)
             smooth_roll_prev = init_angles[0]
             smooth_pitch_prev = init_angles[1]
+            smooth_yaw_prev = init_angles[2]
             flg = 1
         except queue.Empty:
             continue
@@ -109,8 +110,10 @@ def EK_filter(input_queue, output_queue, stop_event):
             smooth_roll_prev = smooth_roll_cur
             smooth_pitch_cur =  salpha * smooth_pitch_prev + (1 - salpha) * pitch
             smooth_pitch_prev = smooth_pitch_cur
+            smooth_yaw_cur =  salpha * smooth_yaw_prev + (1 - salpha) * yaw
+            smooth_yaw_prev = smooth_yaw_cur
 
-            angles = [smooth_roll_cur, smooth_pitch_cur, yaw]
+            angles = [smooth_roll_cur, smooth_pitch_cur, smooth_yaw_cur]
             ##########
             
             # print(f"Q: {[f'{(100*x):8.2f}' for x in Qold]}, E: {[f'{(100*x):8.2f}' for x in angles]}") # Print quat and euler output of update
