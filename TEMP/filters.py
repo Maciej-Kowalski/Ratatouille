@@ -32,8 +32,8 @@ def EK_filter(input_queue, output_queue, stop_event):
     # update_period = 0.05
     # predict_clock = 0.0
     # update_clock = 0.0
-    gyr_alpha = 0.05
-    acc_alpha = 0.2
+    gyr_alpha = 0.01
+    acc_alpha = 0.5
     salpha = 0.75 # Originally 0.65
     flg = 0
     
@@ -70,8 +70,8 @@ def EK_filter(input_queue, output_queue, stop_event):
             acc_prev = np.array([acc_prev],dtype="float")
             Qold = acc2q(acc_prev) # Get the first quaternion state array by converting accelerometer data into a quaternion
             #ekf = EKF(frequency=17.3,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # EKF init from old code
-            ekf = EKF(frequency=95,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # Initialise EKF function. Noise = [Process covariance, Measurement covariance]
-            init_angles = q2rpy(Qold)
+            ekf = EKF(frequency=90,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # Initialise EKF function. Noise = [Process covariance, Measurement covariance]
+            init_angles = q2rpy(Qold)*r2d
             smooth_roll_prev = init_angles[0]
             smooth_pitch_prev = init_angles[1]
             smooth_yaw_prev = init_angles[2]
