@@ -37,21 +37,94 @@ def print_EK_filter_IMU(input_queue, stop_event):
             continue
     print("EKF_IMU_stopped")
 
-def mouse_cursor_mapping(input_queue, stop_event):
+def mouse_cursor_mapping_no_cal(input_queue, stop_event):
     mouse = Controller()
     screen = get_monitors()
     while not stop_event.is_set():
         try:
             roll, pitch, yaw = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
-            x = remap(roll, (0,screen[0].width),(-40,40))
-            y = remap(pitch, (0,screen[0].height),(50,-50))
+            x = remap(yaw, (0,screen[0].width),(-60,20))
+            y = remap(pitch, (screen[0].height,0),(-50,50))
+            print(f"roll: {roll:8.4f}, pitch: {pitch:8.4f}, yaw: {yaw:8.4f}, x: {x}, y: {y}")
             mouse.position = (x, y)
             input_queue.task_done()
         except queue.Empty:
             continue
     print("cursor_mouse_stopped")
 
+def mouse_cursor_mapping_self_cal(input_queue, stop_event):
+    mouse = Controller()
+    screen = get_monitors()
+    t = time.perf_counter()
+    while not stop_event.is_set():
+        try:
+            roll, pitch, yaw = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            print(f"roll: {roll:8.4f}, pitch: {pitch:8.4f}, yaw: {yaw:8.4f}")
+            if time.perf_counter - t > 10:
+                x = remap(yaw, (0,screen[0].width),(-60,20))
+                y = remap(pitch, (screen[0].height,0),(-50,50))
+                mouse.position = (x, y)
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+    print("cursor_mouse_stopped")
+
+def mouse_cursor_mapping(input_queue, stop_event):
+    mouse = Controller()
+    screen = get_monitors()
+    range_horizontal, range_vertical = calibrate(input_queue)
+    while not stop_event.is_set():
+        try:
+            roll, pitch, yaw = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            print(f"roll: {roll:8.4f}, pitch: {pitch:8.4f}, yaw: {yaw:8.4f}")
+            x = remap(roll, (0,screen[0].width),range_horizontal)
+            y = remap(pitch, (screen[0].height,0),range_vertical)
+            mouse.position = (x, y)
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+    print("cursor_mouse_stopped")
+
+def calibrate(input_queue):
+    """Perform calibration by waiting for user input and retrieving data."""
+    print("Calibration started. After following each instruction wait for ~0.5s and press enter")
+    message = [
+        "Look at the middle of the screen",
+        "Look to the centre of the left edge",
+        "Look to the centre of the right edge",
+        "Look to the centre of the top edge",
+        "Look to the centre of the bottom edge",
+    ]
+    calibration_count = 5
+    cal_data = []
+    for i in range(calibration_count):
+        # Wait for user signal (Enter key press)
+        input(message[i])
+
+        # Get the most recent item from the queue
+        try:
+            while not input_queue.empty():
+                data = input_queue.get_nowait()  # Remove all old data
+            cal_data.append(data)  # Store the latest item
+            print(data)
+        except queue.Empty:
+            print("No data in queue to calibrate.")
+
+    range_horizontal = (int(cal_data[1][2]),int(cal_data[2][2]))
+    range_vertical = (int(cal_data[3][1]),int(cal_data[4][1]))
+    print(f"hor: {range_horizontal}, ver: {range_vertical}, middle: {cal_data[0][2]}, {cal_data[0][1]}")
+    time.sleep(3)
+    print("Calibration complete. Starting normal operation.")
+
+    with input_queue.mutex:
+        input_queue.queue.clear()
+    return range_horizontal, range_vertical
+
 def remap(value, new_range, old_range):
+    if value < old_range[0]:
+        value = old_range[0]
+    elif value > old_range[1]:
+        value = old_range[1]
     return int((new_range[1] - new_range[0])*(value - old_range[0]) / (old_range[1] - old_range[0]) + new_range[0])
 
 def print_raw_audio(input_queue, stop_event):

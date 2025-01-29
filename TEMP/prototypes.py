@@ -10,6 +10,7 @@ from outputs import print_raw_IMU
 from outputs import print_comp_IMU
 from outputs import print_EK_filter_IMU
 from outputs import mouse_cursor_mapping
+from outputs import mouse_cursor_mapping_no_cal
 
 def audioBuff():
     try:
@@ -42,7 +43,8 @@ def IMU():
             "baudrate": 115200,
             "timeout": 1
         }
-        prototype = CursorMouse(serial_settings, filter=EK_filter, output=mouse_cursor_mapping)
+        prototype = CursorMouse(serial_settings, filter=EK_filter, output=mouse_cursor_mapping_no_cal)
+        #prototype = CursorMouse(serial_settings, filter=EK_filter, output=print_EK_filter_IMU)
         prototype.start()
     except Exception as e:
         print(e)
