@@ -34,6 +34,7 @@ def EK_filter(input_queue, output_queue, stop_event):
     # update_clock = 0.0
     gyr_alpha = 0.05
     acc_alpha = 0.2
+    salpha = 0.65
     flg = 0
     
     gyr_prev = []
@@ -70,6 +71,9 @@ def EK_filter(input_queue, output_queue, stop_event):
             Qold = acc2q(acc_prev) # Get the first quaternion state array by converting accelerometer data into a quaternion
             #ekf = EKF(frequency=17.3,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # EKF init from old code
             ekf = EKF(frequency=90,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # Initialise EKF function. Noise = [Process covariance, Measurement covariance]
+            init_angles = q2rpy(Qold)
+            smooth_roll_prev = init_angles[0]
+            smooth_pitch_prev = init_angles[1]
             flg = 1
         except queue.Empty:
             continue
@@ -94,7 +98,21 @@ def EK_filter(input_queue, output_queue, stop_event):
             ##### EKF update str #####
             Qnew = ekf.update(Qold, gyr_cur[0], acc_cur[0]) # Update EKF function. See: https://github.com/Mayitzin/ahrs/blob/master/ahrs/filters/ekf.py#L1336
             Qold = Qnew
+
             angles = q2rpy(Qnew)*r2d # Get euler angles from quaternions 
+            roll = angles[0]
+            pitch = angles[1]
+            yaw = angles[2]
+
+            ##### Simple smoothening filter #####
+            smooth_roll_cur =  salpha * smooth_roll_prev + (1 - salpha) * roll
+            smooth_roll_prev = smooth_roll_cur
+            smooth_pitch_cur =  salpha * smooth_pitch_prev + (1 - salpha) * pitch
+            smooth_pitch_prev = smooth_pitch_cur
+
+            angles = [smooth_roll_cur, smooth_pitch_cur, yaw]
+            ##########
+            
             # print(f"Q: {[f'{(100*x):8.2f}' for x in Qold]}, E: {[f'{(100*x):8.2f}' for x in angles]}") # Print quat and euler output of update
             ##### EKF update end #####
 
