@@ -173,7 +173,7 @@ class ClickMouseBuffered:
         # Threads
         self.threads = []
         self.running = False
-
+    '''Wher ar you Tim, you should b working'''
     def start(self):
         """Start the pipeline by initializing threads."""
         self.running = True
