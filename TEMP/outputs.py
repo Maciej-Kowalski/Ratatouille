@@ -77,8 +77,8 @@ def mouse_cursor_mapping(input_queue, stop_event):
         try:
             roll, pitch, yaw = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
             print(f"roll: {roll:8.4f}, pitch: {pitch:8.4f}, yaw: {yaw:8.4f}")
-            x = remap(roll, (0,screen[0].width),range_horizontal)
-            y = remap(pitch, (screen[0].height,0),range_vertical)
+            x = remap(yaw, (0,screen[0].width),range_horizontal)
+            y = remap(pitch, (0,screen[0].height),range_vertical)
             mouse.position = (x, y)
             input_queue.task_done()
         except queue.Empty:
@@ -121,10 +121,16 @@ def calibrate(input_queue):
     return range_horizontal, range_vertical
 
 def remap(value, new_range, old_range):
-    if value < old_range[0]:
-        value = old_range[0]
-    elif value > old_range[1]:
-        value = old_range[1]
+    if old_range[1] > old_range[0]:
+        if value < old_range[0]:
+            value = old_range[0]
+        elif value > old_range[1]:
+            value = old_range[1]
+    else:
+        if value < old_range[1]:
+            value = old_range[1]
+        elif value > old_range[0]:
+            value = old_range[0]
     return int((new_range[1] - new_range[0])*(value - old_range[0]) / (old_range[1] - old_range[0]) + new_range[0])
 
 def print_raw_audio(input_queue, stop_event):

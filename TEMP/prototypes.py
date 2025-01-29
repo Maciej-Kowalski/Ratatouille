@@ -43,7 +43,7 @@ def IMU():
             "baudrate": 115200,
             "timeout": 1
         }
-        prototype = CursorMouse(serial_settings, filter=EK_filter, output=mouse_cursor_mapping_no_cal)
+        prototype = CursorMouse(serial_settings, filter=EK_filter, output=mouse_cursor_mapping)
         #prototype = CursorMouse(serial_settings, filter=EK_filter, output=print_EK_filter_IMU)
         prototype.start()
     except Exception as e:
