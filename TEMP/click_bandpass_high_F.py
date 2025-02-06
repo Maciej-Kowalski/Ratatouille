@@ -4,7 +4,7 @@ import sounddevice as sd
 from matplotlib.animation import FuncAnimation
 import time
 from pynput.mouse import Button, Controller
-
+   
 from matplotlib.ticker import AutoMinorLocator
 from scipy.signal import butter, filtfilt
 
@@ -30,6 +30,7 @@ WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
 
 # Initialize audio buffer
 audio_buffer = np.zeros(BUFFER_SIZE)
+filtered_buffer = np.zeros(BUFFER_SIZE)
 
 # Cooldown (to avoid registering many clicks in a row)
 click_count = 0
@@ -59,38 +60,20 @@ def detect_click_sliding_window(signal):
 
 
 # --------------- Bandpass Filter ---------------
-def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+def butter_bandpass_filter(data):
     """
     Apply a zero-phase Butterworth bandpass filter to 'data'.
     """
-    nyquist = 0.5 * fs
-    low = lowcut / nyquist
-    high = highcut / nyquist
-    b, a = butter(order, [low, high], btype='band')
+    nyquist = 0.5 * SAMPLE_RATE
+    low = LOWCUT / nyquist
+    high = HIGHCUT / nyquist
+    b, a = butter(FILTER_ORDER, [low, high], btype='band')
     return filtfilt(b, a, data)  # zero-phase filtering
-
-
-# --------------- Matplotlib Setup ---------------
-fig, ax_time = plt.subplots(figsize=(10, 5))
-
-x_time = np.linspace(0, DURATION, BUFFER_SIZE)
-line_time, = ax_time.plot(x_time, audio_buffer, label="Bandpass Filtered Signal")
-ax_time.set_xlim(0, DURATION)
-ax_time.set_ylim(-0.7, 0.7)  # Adjust as needed
-ax_time.set_title("Live Time-Domain Signal (High Bandpass Filter)")
-ax_time.set_xlabel("Time (s)")
-ax_time.set_ylabel("Amplitude")
-ax_time.legend()
-ax_time.grid(True, linestyle="--", linewidth=0.5)
-
-# More x-axis ticks
-ax_time.set_xticks(np.arange(0, DURATION + 0.1, 0.1))
-ax_time.xaxis.set_minor_locator(AutoMinorLocator(2))  # 2 minor ticks per major interval
 
 
 # --------------- Audio Callback ---------------
 def audio_callback(indata, frames, time_info, status):
-    global audio_buffer
+    global audio_buffer, filtered_buffer
     if status:
         print(f"Status: {status}")
 
@@ -98,6 +81,9 @@ def audio_callback(indata, frames, time_info, status):
     audio_buffer[:-frames] = audio_buffer[frames:]
     # Store new raw samples (no rectification, just raw)
     audio_buffer[-frames:] = indata[:, 0]
+
+    # Apply filtering separately
+    filtered_buffer[:] = butter_bandpass_filter(audio_buffer)
 
 
 def left_click():
@@ -109,22 +95,12 @@ def left_click():
 def update_plot(frame):
     global click_count, last_click_time
 
-    # 1) Filter the raw buffer
-    filtered_data = butter_bandpass_filter(
-        data=audio_buffer,
-        lowcut=LOWCUT,
-        highcut=HIGHCUT,
-        fs=SAMPLE_RATE,
-        order=FILTER_ORDER
+    # 1) Update live time-domain plot with filtered data
+    line_time.set_ydata(filtered_buffer)
 
-    )
-
-    # 2) Update live time-domain plot with filtered data
-    line_time.set_ydata(filtered_data)
-
-    # 3) Click detection with +/- threshold
+    # 2) Click detection with +/- threshold
     now = time.time()
-    if detect_click_sliding_window(filtered_data):
+    if detect_click_sliding_window(filtered_buffer):
         # Only register a new click if cooldown has passed
         if now - last_click_time > click_cooldown:
             click_count += 1
@@ -133,13 +109,30 @@ def update_plot(frame):
             left_click()
 
 
+# --------------- Matplotlib Setup ---------------
+fig, ax_time = plt.subplots(figsize=(10, 5))
+
+x_time = np.linspace(0, DURATION, BUFFER_SIZE)
+line_time, = ax_time.plot(x_time, filtered_buffer, label="Bandpass Filtered Signal")
+ax_time.set_xlim(0, DURATION)
+ax_time.set_ylim(-0.7, 0.7)  # Adjust as needed
+ax_time.set_title("Live Time-Domain Signal (High Bandpass Filter)")
+ax_time.set_xlabel("Time (s)")
+ax_time.set_ylabel("Amplitude")
+ax_time.legend()
+ax_time.grid(True, linestyle="--", linewidth=0.5)
+
+# More x-axis ticks
+ax_time.set_xticks(np.arange(0, DURATION + 0.1, 0.2))
+ax_time.xaxis.set_minor_locator(AutoMinorLocator(2))  # 2 minor ticks per major interval
+
+
 # --------------- Main Execution ---------------
 def main():
     stream = sd.InputStream(
         channels=2,
         samplerate=SAMPLE_RATE,
         callback=audio_callback
-
     )
 
     with stream:
