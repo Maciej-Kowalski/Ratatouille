@@ -10366,44 +10366,44 @@ LOAD D:/WorkSoftware/STM32CubeIDE_1.16.1/STM32CubeIDE/plugins/com.st.stm32cube.i
  .debug_macro   0x0002a707       0x1c ./USB_Device/App/usbd_desc.o
  .debug_macro   0x0002a723      0x442 ./USB_Device/Target/usbd_conf.o
 
-.debug_line     0x00000000    0x2f2ea
+.debug_line     0x00000000    0x2f2e8
  .debug_line    0x00000000     0x347e ./Core/Src/bmi160.o
  .debug_line    0x0000347e      0xe05 ./Core/Src/bmi160_wrapper.o
  .debug_line    0x00004283      0xc4a ./Core/Src/common_porting.o
- .debug_line    0x00004ecd     0x10cc ./Core/Src/main.o
- .debug_line    0x00005f99      0xce0 ./Core/Src/stm32wbxx_hal_msp.o
- .debug_line    0x00006c79      0xd09 ./Core/Src/stm32wbxx_it.o
- .debug_line    0x00007982      0xa5a ./Core/Src/syscalls.o
- .debug_line    0x000083dc      0x672 ./Core/Src/sysmem.o
- .debug_line    0x00008a4e      0x969 ./Core/Src/system_stm32wbxx.o
- .debug_line    0x000093b7       0x83 ./Core/Startup/startup_stm32wb55rgvx.o
- .debug_line    0x0000943a      0xd05 ./Drivers/BSP/P-NUCLEO-WB55.Nucleo/stm32wbxx_nucleo.o
- .debug_line    0x0000a13f     0x1108 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal.o
- .debug_line    0x0000b247     0x1e6b ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_adc.o
- .debug_line    0x0000d0b2     0x16ed ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_adc_ex.o
- .debug_line    0x0000e79f      0xe34 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_cortex.o
- .debug_line    0x0000f5d3     0x101c ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_dma.o
- .debug_line    0x000105ef      0xd05 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_gpio.o
- .debug_line    0x000112f4     0x3ba5 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_i2c.o
- .debug_line    0x00014e99      0xad2 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_i2c_ex.o
- .debug_line    0x0001596b     0x1516 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_pcd.o
- .debug_line    0x00016e81      0xa50 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_pcd_ex.o
- .debug_line    0x000178d1      0xb4f ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_pwr.o
- .debug_line    0x00018420     0x1249 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_pwr_ex.o
- .debug_line    0x00019669     0x19aa ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_rcc.o
- .debug_line    0x0001b013     0x1db5 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_rcc_ex.o
- .debug_line    0x0001cdc8     0x3d37 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_tim.o
- .debug_line    0x00020aff     0x1d8d ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_tim_ex.o
- .debug_line    0x0002288c     0x3d2b ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_uart.o
- .debug_line    0x000265b7     0x11a1 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_ll_usb.o
- .debug_line    0x00027758     0x1129 ./Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.o
- .debug_line    0x00028881     0x11a9 ./Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.o
- .debug_line    0x00029a2a     0x13d0 ./Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.o
- .debug_line    0x0002adfa      0xcbd ./Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.o
- .debug_line    0x0002bab7      0xc79 ./USB_Device/App/usb_device.o
- .debug_line    0x0002c730      0xcdc ./USB_Device/App/usbd_cdc_if.o
- .debug_line    0x0002d40c      0xd42 ./USB_Device/App/usbd_desc.o
- .debug_line    0x0002e14e     0x119c ./USB_Device/Target/usbd_conf.o
+ .debug_line    0x00004ecd     0x10ca ./Core/Src/main.o
+ .debug_line    0x00005f97      0xce0 ./Core/Src/stm32wbxx_hal_msp.o
+ .debug_line    0x00006c77      0xd09 ./Core/Src/stm32wbxx_it.o
+ .debug_line    0x00007980      0xa5a ./Core/Src/syscalls.o
+ .debug_line    0x000083da      0x672 ./Core/Src/sysmem.o
+ .debug_line    0x00008a4c      0x969 ./Core/Src/system_stm32wbxx.o
+ .debug_line    0x000093b5       0x83 ./Core/Startup/startup_stm32wb55rgvx.o
+ .debug_line    0x00009438      0xd05 ./Drivers/BSP/P-NUCLEO-WB55.Nucleo/stm32wbxx_nucleo.o
+ .debug_line    0x0000a13d     0x1108 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal.o
+ .debug_line    0x0000b245     0x1e6b ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_adc.o
+ .debug_line    0x0000d0b0     0x16ed ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_adc_ex.o
+ .debug_line    0x0000e79d      0xe34 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_cortex.o
+ .debug_line    0x0000f5d1     0x101c ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_dma.o
+ .debug_line    0x000105ed      0xd05 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_gpio.o
+ .debug_line    0x000112f2     0x3ba5 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_i2c.o
+ .debug_line    0x00014e97      0xad2 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_i2c_ex.o
+ .debug_line    0x00015969     0x1516 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_pcd.o
+ .debug_line    0x00016e7f      0xa50 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_pcd_ex.o
+ .debug_line    0x000178cf      0xb4f ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_pwr.o
+ .debug_line    0x0001841e     0x1249 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_pwr_ex.o
+ .debug_line    0x00019667     0x19aa ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_rcc.o
+ .debug_line    0x0001b011     0x1db5 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_rcc_ex.o
+ .debug_line    0x0001cdc6     0x3d37 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_tim.o
+ .debug_line    0x00020afd     0x1d8d ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_tim_ex.o
+ .debug_line    0x0002288a     0x3d2b ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_hal_uart.o
+ .debug_line    0x000265b5     0x11a1 ./Drivers/STM32WBxx_HAL_Driver/Src/stm32wbxx_ll_usb.o
+ .debug_line    0x00027756     0x1129 ./Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.o
+ .debug_line    0x0002887f     0x11a9 ./Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_core.o
+ .debug_line    0x00029a28     0x13d0 ./Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ctlreq.o
+ .debug_line    0x0002adf8      0xcbd ./Middlewares/ST/STM32_USB_Device_Library/Core/Src/usbd_ioreq.o
+ .debug_line    0x0002bab5      0xc79 ./USB_Device/App/usb_device.o
+ .debug_line    0x0002c72e      0xcdc ./USB_Device/App/usbd_cdc_if.o
+ .debug_line    0x0002d40a      0xd42 ./USB_Device/App/usbd_desc.o
+ .debug_line    0x0002e14c     0x119c ./USB_Device/Target/usbd_conf.o
 
 .debug_str      0x00000000   0x10099a
  .debug_str     0x00000000     0xd421 ./Core/Src/bmi160.o

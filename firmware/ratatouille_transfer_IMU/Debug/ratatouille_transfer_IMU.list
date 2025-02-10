@@ -33,11 +33,11 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING, OCTETS
  14 .debug_macro  0002ab65  00000000  00000000  0004f1eb  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_line   0002f2ea  00000000  00000000  00079d50  2**0
+ 15 .debug_line   0002f2e8  00000000  00000000  00079d50  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .debug_str    0010099a  00000000  00000000  000a903a  2**0
+ 16 .debug_str    0010099a  00000000  00000000  000a9038  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .comment      00000043  00000000  00000000  001a99d4  2**0
+ 17 .comment      00000043  00000000  00000000  001a99d2  2**0
                   CONTENTS, READONLY
  18 .debug_frame  0000ca00  00000000  00000000  001a9a18  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
@@ -10791,37 +10791,37 @@ int main(void)
  800480a:	781b      	ldrb	r3, [r3, #0]
  800480c:	2b01      	cmp	r3, #1
  800480e:	d1f8      	bne.n	8004802 <main+0xb2>
+//		  g_f32[0] = imu_t.BMI160_Gx_f32*0.0174533;
+//		  g_f32[1] = imu_t.BMI160_Gy_f32*0.0174533;
+//		  g_f32[2] = imu_t.BMI160_Gz_f32*0.0174533;
 
-		  g_f32[0] = 4;
-		  g_f32[1] = 5;
-		  g_f32[2] = 6;*/
-		  // Normal (old) orientation
-		  a_f32[0] = imu_t.BMI160_Ax_f32*g;
+		  // head orientation
+		  a_f32[1] = imu_t.BMI160_Ax_f32*g;
  8004810:	4b3c      	ldr	r3, [pc, #240]	@ (8004904 <main+0x1b4>)
  8004812:	ed93 7a00 	vldr	s14, [r3]
  8004816:	4b3e      	ldr	r3, [pc, #248]	@ (8004910 <main+0x1c0>)
  8004818:	edd3 7a00 	vldr	s15, [r3]
  800481c:	ee67 7a27 	vmul.f32	s15, s14, s15
  8004820:	4b3c      	ldr	r3, [pc, #240]	@ (8004914 <main+0x1c4>)
- 8004822:	edc3 7a00 	vstr	s15, [r3]
-		  a_f32[1] = imu_t.BMI160_Ay_f32*g;
+ 8004822:	edc3 7a01 	vstr	s15, [r3, #4]
+		  a_f32[2] = imu_t.BMI160_Ay_f32*g;
  8004826:	4b37      	ldr	r3, [pc, #220]	@ (8004904 <main+0x1b4>)
  8004828:	ed93 7a01 	vldr	s14, [r3, #4]
  800482c:	4b38      	ldr	r3, [pc, #224]	@ (8004910 <main+0x1c0>)
  800482e:	edd3 7a00 	vldr	s15, [r3]
  8004832:	ee67 7a27 	vmul.f32	s15, s14, s15
  8004836:	4b37      	ldr	r3, [pc, #220]	@ (8004914 <main+0x1c4>)
- 8004838:	edc3 7a01 	vstr	s15, [r3, #4]
-		  a_f32[2] = imu_t.BMI160_Az_f32*g;
+ 8004838:	edc3 7a02 	vstr	s15, [r3, #8]
+		  a_f32[0] = imu_t.BMI160_Az_f32*g;
  800483c:	4b31      	ldr	r3, [pc, #196]	@ (8004904 <main+0x1b4>)
  800483e:	ed93 7a02 	vldr	s14, [r3, #8]
  8004842:	4b33      	ldr	r3, [pc, #204]	@ (8004910 <main+0x1c0>)
  8004844:	edd3 7a00 	vldr	s15, [r3]
  8004848:	ee67 7a27 	vmul.f32	s15, s14, s15
  800484c:	4b31      	ldr	r3, [pc, #196]	@ (8004914 <main+0x1c4>)
- 800484e:	edc3 7a02 	vstr	s15, [r3, #8]
+ 800484e:	edc3 7a00 	vstr	s15, [r3]
 
-		  g_f32[0] = imu_t.BMI160_Gx_f32*0.0174533;
+		  g_f32[1] = imu_t.BMI160_Gx_f32*0.0174533;
  8004852:	4b2c      	ldr	r3, [pc, #176]	@ (8004904 <main+0x1b4>)
  8004854:	68db      	ldr	r3, [r3, #12]
  8004856:	4618      	mov	r0, r3
@@ -10836,8 +10836,8 @@ int main(void)
  800486e:	f7fc f973 	bl	8000b58 <__aeabi_d2f>
  8004872:	4603      	mov	r3, r0
  8004874:	4a28      	ldr	r2, [pc, #160]	@ (8004918 <main+0x1c8>)
- 8004876:	6013      	str	r3, [r2, #0]
-		  g_f32[1] = imu_t.BMI160_Gy_f32*0.0174533;
+ 8004876:	6053      	str	r3, [r2, #4]
+		  g_f32[2] = imu_t.BMI160_Gy_f32*0.0174533;
  8004878:	4b22      	ldr	r3, [pc, #136]	@ (8004904 <main+0x1b4>)
  800487a:	691b      	ldr	r3, [r3, #16]
  800487c:	4618      	mov	r0, r3
@@ -10852,8 +10852,8 @@ int main(void)
  8004894:	f7fc f960 	bl	8000b58 <__aeabi_d2f>
  8004898:	4603      	mov	r3, r0
  800489a:	4a1f      	ldr	r2, [pc, #124]	@ (8004918 <main+0x1c8>)
- 800489c:	6053      	str	r3, [r2, #4]
-		  g_f32[2] = imu_t.BMI160_Gz_f32*0.0174533;
+ 800489c:	6093      	str	r3, [r2, #8]
+		  g_f32[0] = imu_t.BMI160_Gz_f32*0.0174533;
  800489e:	4b19      	ldr	r3, [pc, #100]	@ (8004904 <main+0x1b4>)
  80048a0:	695b      	ldr	r3, [r3, #20]
  80048a2:	4618      	mov	r0, r3
@@ -10868,11 +10868,7 @@ int main(void)
  80048ba:	f7fc f94d 	bl	8000b58 <__aeabi_d2f>
  80048be:	4603      	mov	r3, r0
  80048c0:	4a15      	ldr	r2, [pc, #84]	@ (8004918 <main+0x1c8>)
- 80048c2:	6093      	str	r3, [r2, #8]
-//
-//		  g_f32[0] = imu_t.BMI160_Gx_f32*0.0174533;
-//		  g_f32[1] = imu_t.BMI160_Gy_f32*0.0174533;
-//		  g_f32[2] = imu_t.BMI160_Gz_f32*0.0174533;
+ 80048c2:	6013      	str	r3, [r2, #0]
 
 		  prepare_data_packet_IMU(g_f32,a_f32,USB_buffer,&packet_length);
  80048c4:	4b15      	ldr	r3, [pc, #84]	@ (800491c <main+0x1cc>)

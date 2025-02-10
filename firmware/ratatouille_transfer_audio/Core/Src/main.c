@@ -170,13 +170,6 @@ int main(void)
     ////This begins our timer 2
   HAL_TIM_Base_Start_IT(&htim2);
 
-  while (BMI160_init(imu_t) == 1); // waits for IMU to be ready
-
-  if (imu_t.INIT_OK_i8 == TRUE){
-	  BSP_LED_On(LED_RED);
-	//HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, SET);
-  }
-
   /* USER CODE END 2 */
 
   /* Initialize leds */
@@ -207,15 +200,23 @@ int main(void)
   {
 	  //bmi160ReadAccelGyro(&imu_t);
 
-	  if (flag==1){
-		  counter++;
+	  if (flag == 1){
+		  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_SET);
+		  if (counter == 32000){
+			  counter = 0;
+		  }
+		  else{
+			  counter++;
+		  }
 		  prepare_data_packet_audio(counter, counter,USB_buffer,&packet_length);
 		  //prepare_data_packet_audio(mic, mic2,USB_buffer,&packet_length);
+
 		  CDC_Transmit_FS(USB_buffer, packet_length);
+
 		  BSP_LED_Toggle(LED_GREEN);
-		  //HAL_GPIO_TogglePin(LED_GREEN_Port,LED_GREEN_Pin);
-		  //snprintf(msg, sizeof(msg), "a: %.2f, g: %.2f", a_f32[0], g_f32[0]);
+		  //snprintf(msg, sizeof(msg), "counter: %d \r\n", counter);
 		  //CDC_Transmit_FS((uint8_t *)msg, strlen(msg));
+		  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_RESET);
 
 		  flag = 0;
 	  }
@@ -453,7 +454,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 10;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 640-1;
+  htim2.Init.Period = 256000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -501,6 +502,7 @@ static void MX_DMA_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
@@ -508,6 +510,16 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : TIMING_Pin */
+  GPIO_InitStruct.Pin = TIMING_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+  HAL_GPIO_Init(TIMING_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

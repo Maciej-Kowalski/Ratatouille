@@ -213,22 +213,22 @@ int main(void)
 		  g_f32[1] = 5;
 		  g_f32[2] = 6;*/
 		  // Normal (old) orientation
-		  a_f32[0] = imu_t.BMI160_Ax_f32*g;
-		  a_f32[1] = imu_t.BMI160_Ay_f32*g;
-		  a_f32[2] = imu_t.BMI160_Az_f32*g;
-
-		  g_f32[0] = imu_t.BMI160_Gx_f32*0.0174533;
-		  g_f32[1] = imu_t.BMI160_Gy_f32*0.0174533;
-		  g_f32[2] = imu_t.BMI160_Gz_f32*0.0174533;
-
-		  // head orientation
-//		  a_f32[0] = (imu_t.BMI160_Ax_f32 - 1)*g;
+//		  a_f32[0] = imu_t.BMI160_Ax_f32*g;
 //		  a_f32[1] = imu_t.BMI160_Ay_f32*g;
-//		  a_f32[2] = (imu_t.BMI160_Az_f32 + 1)*g;
+//		  a_f32[2] = imu_t.BMI160_Az_f32*g;
 //
 //		  g_f32[0] = imu_t.BMI160_Gx_f32*0.0174533;
 //		  g_f32[1] = imu_t.BMI160_Gy_f32*0.0174533;
 //		  g_f32[2] = imu_t.BMI160_Gz_f32*0.0174533;
+
+		  // head orientation
+		  a_f32[1] = imu_t.BMI160_Ax_f32*g;
+		  a_f32[2] = imu_t.BMI160_Ay_f32*g;
+		  a_f32[0] = imu_t.BMI160_Az_f32*g;
+
+		  g_f32[1] = imu_t.BMI160_Gx_f32*0.0174533;
+		  g_f32[2] = imu_t.BMI160_Gy_f32*0.0174533;
+		  g_f32[0] = imu_t.BMI160_Gz_f32*0.0174533;
 
 		  prepare_data_packet_IMU(g_f32,a_f32,USB_buffer,&packet_length);
 		  CDC_Transmit_FS(USB_buffer, packet_length);

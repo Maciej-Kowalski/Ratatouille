@@ -209,14 +209,24 @@ int main(void)
 	  //bmi160ReadAccelGyro(&imu_t);
 
 	  if (flag==1){
-		  counter++;
+		  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_SET);
+		  if (counter == 32000){
+			  counter = 0;
+		  }
+		  else{
+			  counter++;
+		  }
 		  update_data_packet_audio_buffered(counter, counter, USB_buffer, &packet_length);
 		  //prepare_data_packet_audio(counter, counter,USB_buffer,&packet_length);
 		  //prepare_data_packet_audio(mic, mic2,USB_buffer,&packet_length);
+		  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_RESET);
 		  if (counter % 100 == 0){
 			  CDC_Transmit_FS(USB_buffer, packet_length);
+			  packet_length = 0;
 			  BSP_LED_Toggle(LED_GREEN);
+
 		  }
+
 
 
 		  //HAL_GPIO_TogglePin(LED_GREEN_Port,LED_GREEN_Pin);
@@ -457,9 +467,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 10;
+  htim2.Init.Prescaler = 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 640-1;
+  htim2.Init.Period = 1600-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -507,6 +517,7 @@ static void MX_DMA_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 /* USER CODE BEGIN MX_GPIO_Init_1 */
 /* USER CODE END MX_GPIO_Init_1 */
 
@@ -514,6 +525,16 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : TIMING_Pin */
+  GPIO_InitStruct.Pin = TIMING_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
+  HAL_GPIO_Init(TIMING_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
