@@ -8,10 +8,90 @@ from ahrs.filters import EKF
 import ahrs
 from ahrs.common.orientation import acc2q
 from ahrs.common.orientation import q2rpy
+from collections import deque
+from scipy.signal import butter, filtfilt
 #import matplotlib.pyplot as plt
 #import matplotlib.animation as animation
 #from matplotlib import style
 ##### EKF libraries end #####
+
+import queue
+import time
+import numpy as np
+from collections import deque
+from scipy.signal import butter, filtfilt
+
+# ---------------- Parameters ----------------
+PACKET_SIZE = 100           # Samples per packet (must match serial_pipeline settings)
+WINDOW_PACKETS = 20         # Number of packets to form the sliding window
+SAMPLE_RATE = 16500         # Hz
+LOWCUT = 7000.0             # Hz
+HIGHCUT = 8000.0            # Hz
+FILTER_ORDER = 5
+
+# Click detection thresholds and cooldown
+POSITIVE_THRESHOLD = 0.20
+NEGATIVE_THRESHOLD = -0.20
+click_cooldown = 0.18       # seconds
+
+# ---------------- Helper Functions ----------------
+def butter_bandpass_filter(data):
+    nyquist = 0.5 * SAMPLE_RATE
+    low = LOWCUT / nyquist
+    high = HIGHCUT / nyquist
+    b, a = butter(FILTER_ORDER, [low, high], btype='band')
+    return filtfilt(b, a, data)
+
+def detect_click_sliding_window(signal):
+    return np.max(signal) > POSITIVE_THRESHOLD and np.min(signal) < NEGATIVE_THRESHOLD
+
+# ---------------- New Filtering Function ----------------
+def audio_filter_with_buffer(input_queue, output_queue, stop_event):
+    """
+    Reads audio packets from input_queue, buffers them in a sliding window,
+    applies a bandpass filter, and performs click detection.
+    
+    Each packet is expected to be a NumPy array of length PACKET_SIZE.
+    """
+    packet_buffer = deque(maxlen=WINDOW_PACKETS)
+    last_click_time = 0.0
+    
+    while not stop_event.is_set():
+        try:
+            # Retrieve next packet (blocking with a timeout)
+            packet = input_queue.get(timeout=0.01)
+            packet_buffer.append(packet)
+            input_queue.task_done()
+            
+            # Process only if we have a full window
+            if len(packet_buffer) < WINDOW_PACKETS:
+                continue
+
+            # Concatenate packets (oldest to newest)
+            window = np.concatenate(list(packet_buffer))
+            
+            # Apply filtering
+            filtered_window = butter_bandpass_filter(window)
+            
+            # Click detection on the filtered window
+            current_time = time.time()
+            if detect_click_sliding_window(filtered_window):
+                if current_time - last_click_time > click_cooldown:
+                    last_click_time = current_time
+                    # Send a tuple indicating a click event along with the filtered data
+                    output_queue.put(("click", filtered_window))
+                    continue  # Skip sending normal data in this case
+            
+            # Otherwise, output the filtered data (e.g., for visualization or further processing)
+            output_queue.put(("data", filtered_window))
+            
+        except queue.Empty:
+            continue
+        except Exception as e:
+            print("Exception in audio_filter_with_buffer:", e)
+            continue
+    print("audio_filter_with_buffer stopped")
+    
 
 #the most up-to-date pipeline structure
 def no_filter(input_queue, output_queue, stop_event):

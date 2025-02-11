@@ -19,7 +19,8 @@ def audioBuff():
             "baudrate": 115200,
             "timeout": 1
         }
-        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_counter_audio_buffered)
+        # Use audio_filter_with_buffer instead of no_filter
+        prototype = ClickMouseBuffered(serial_settings, filter=audio_filter_with_buffer, output=print_counter_audio_buffered)
         prototype.start()
     except Exception as e:
         print(e)
@@ -44,7 +45,8 @@ def IMU():
             "timeout": 1
         }
         prototype = CursorMouse(serial_settings, filter=EK_filter, output=mouse_cursor_mapping)
-        #prototype = CursorMouse(serial_settings, filter=EK_filter, output=print_EK_filter_IMU)
+        # Uncomment the following line to use print_EK_filter_IMU instead:
+        # prototype = CursorMouse(serial_settings, filter=EK_filter, output=print_EK_filter_IMU)
         prototype.start()
     except Exception as e:
         print(e)
