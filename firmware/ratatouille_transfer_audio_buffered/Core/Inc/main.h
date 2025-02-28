@@ -67,6 +67,8 @@ void Error_Handler(void);
 #define RCC_OSC32_OUT_GPIO_Port GPIOC
 #define TIMING_Pin GPIO_PIN_0
 #define TIMING_GPIO_Port GPIOA
+#define SIGNAL_Pin GPIO_PIN_1
+#define SIGNAL_GPIO_Port GPIOA
 #define USB_DM_Pin GPIO_PIN_11
 #define USB_DM_GPIO_Port GPIOA
 #define USB_DP_Pin GPIO_PIN_12

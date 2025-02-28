@@ -110,6 +110,7 @@ void move_square(int delay);
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim2)
   {
+	HAL_GPIO_TogglePin(TIMING_GPIO_Port, TIMING_Pin);
 	////this updates the X and Y axes of my joystick
 	  for(uint8_t i = 0; i<hadc1.Init.NbrOfConversion; i++){
 		  mic = (uint16_t) rawValues[0];
@@ -209,21 +210,23 @@ int main(void)
 	  //bmi160ReadAccelGyro(&imu_t);
 
 	  if (flag==1){
-		  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_SET);
+
+		  HAL_GPIO_TogglePin(SIGNAL_GPIO_Port, SIGNAL_Pin);
+		  //HAL_GPIO_WritePin(SIGNAL_GPIO_Port, SIGNAL_Pin,GPIO_PIN_SET);
 		  if (counter == 32000){
 			  counter = 0;
 		  }
 		  else{
 			  counter++;
 		  }
-		  update_data_packet_audio_buffered(counter, counter, USB_buffer, &packet_length);
+		  update_data_packet_audio_buffered(mic, mic2, USB_buffer, &packet_length);
 		  //prepare_data_packet_audio(counter, counter,USB_buffer,&packet_length);
 		  //prepare_data_packet_audio(mic, mic2,USB_buffer,&packet_length);
-		  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_RESET);
+		  //HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_RESET);
 		  if (counter % 100 == 0){
-			  CDC_Transmit_FS(USB_buffer, packet_length);
+			  //CDC_Transmit_FS(USB_buffer, packet_length);
 			  packet_length = 0;
-			  BSP_LED_Toggle(LED_GREEN);
+			  //BSP_LED_Toggle(LED_GREEN);
 
 		  }
 
@@ -234,6 +237,7 @@ int main(void)
 		  //CDC_Transmit_FS((uint8_t *)msg, strlen(msg));
 
 		  flag = 0;
+		  //HAL_GPIO_WritePin(SIGNAL_GPIO_Port, SIGNAL_Pin,GPIO_PIN_RESET);
 	  }
 
 	  /*HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin);
@@ -469,7 +473,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 1600-1;
+  htim2.Init.Period = 800-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -527,7 +531,7 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, TIMING_Pin|SIGNAL_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : TIMING_Pin */
   GPIO_InitStruct.Pin = TIMING_Pin;
@@ -535,6 +539,13 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
   HAL_GPIO_Init(TIMING_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SIGNAL_Pin */
+  GPIO_InitStruct.Pin = SIGNAL_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(SIGNAL_GPIO_Port, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */

@@ -15,7 +15,7 @@ from outputs import mouse_cursor_mapping_no_cal
 def audioBuff():
     try:
         serial_settings = {
-            "port": "COM19",
+            "port": "COM16",
             "baudrate": 115200,
             "timeout": 1
         }

@@ -170,11 +170,13 @@ def print_counter_audio_buffered(input_queue, stop_event, buffer_size):
             audio2 = task['audio2']  # Retrieve all audio2 values
             #print(f"counter: {counter:4d}, audio1: {audio1:4d}, audio2: {audio2:4d}")
             counter += 1*buffer_size
-            if counter % 10000 == 0:
-                print(f"counter: {counter}, audio: {audio1[buffer_size-1]} time: {time.perf_counter()-t}")
+            if counter % 1000 == 0:
+                queue_length = input_queue.qsize()
+                print(f"counter: {counter}, audio: {audio1[buffer_size-1]:5d} time: {time.perf_counter()-t:8.4f}, queue: {queue_length} ")
                 t = time.perf_counter()
             input_queue.task_done()
         except queue.Empty:
+            print("Empty")
             continue
     print("print_counter_audio_buffered_stopped")
 
