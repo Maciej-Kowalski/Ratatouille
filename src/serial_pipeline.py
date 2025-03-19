@@ -10,9 +10,9 @@ import numpy as np
 
 START_BYTE = 128
 IMU_PACKET_LENGTH = 25
-AUDIO_PACKET_LENGTH = 5
-BUFFER_SIZE = 100
-AUDIO_BUFFERED_PACKET_LENGTH = 4*BUFFER_SIZE + 1
+AUDIO_PACKET_LENGTH = 3
+BUFFER_SIZE = 800
+AUDIO_BUFFERED_PACKET_LENGTH = 2*BUFFER_SIZE + 1
 
 class CursorMouse:
     def __init__(self, serial_settings, filter, output):
@@ -173,7 +173,7 @@ class ClickMouseBuffered:
         # Threads
         self.threads = []
         self.running = False
-    '''Wher ar you Tim, you should b working'''
+
     def start(self):
         """Start the pipeline by initializing threads."""
         self.running = True
@@ -215,18 +215,21 @@ class ClickMouseBuffered:
 
     def unpack(self, data):
         if len(data) == AUDIO_BUFFERED_PACKET_LENGTH-1:
-            raw_values = np.frombuffer(data, dtype=np.int16)
+            audio = np.frombuffer(data, dtype=np.int16)
+            
+            '''FOR DOUBLE MIC
             # Separate alternating values into audio1 and audio2
             audio1 = raw_values[0::2]  # Take even-indexed values
             audio2 = raw_values[1::2]  # Take odd-indexed values
 
             # Create a structured NumPy array for audio1 and audio2
-            structured_audio = np.array(list(zip(audio1, audio2)), dtype=[('audio1', np.int16), ('audio2', np.int16)])
+            structured_audio = np.array(list(zip(audio1, audio2)), dtype=[('audio1', np.int16), ('audio2', np.int16)]) '''
 
             # Push the structured data to the queue
-            self.raw_data_queue.put(structured_audio)
+            self.raw_data_queue.put(audio)
         else:
             print("Data packet length invalid - ", len(data), ", expected ", AUDIO_BUFFERED_PACKET_LENGTH-1)
+            print(data)
         
     def shutdown(self):
         """Gracefully stop all threads."""

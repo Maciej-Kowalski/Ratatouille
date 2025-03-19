@@ -211,7 +211,7 @@ int main(void)
 
 	  if (flag==1){
 
-		  HAL_GPIO_TogglePin(SIGNAL_GPIO_Port, SIGNAL_Pin);
+		  //HAL_GPIO_TogglePin(SIGNAL_GPIO_Port, SIGNAL_Pin);
 		  //HAL_GPIO_WritePin(SIGNAL_GPIO_Port, SIGNAL_Pin,GPIO_PIN_SET);
 		  if (counter == 32000){
 			  counter = 0;
@@ -224,9 +224,9 @@ int main(void)
 		  //prepare_data_packet_audio(mic, mic2,USB_buffer,&packet_length);
 		  //HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_RESET);
 		  if (counter % 100 == 0){
-			  //CDC_Transmit_FS(USB_buffer, packet_length);
+			  CDC_Transmit_FS(USB_buffer, packet_length);
 			  packet_length = 0;
-			  //BSP_LED_Toggle(LED_GREEN);
+			  BSP_LED_Toggle(LED_GREEN);
 
 		  }
 

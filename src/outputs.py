@@ -148,11 +148,11 @@ def print_counter_audio(input_queue, stop_event):
     t = time.perf_counter()
     while not stop_event.is_set():
         try:
-            audio1, audio2 = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            audio = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
             counter += 1
             #print(f"counter: {counter:4d}, audio1: {audio1:4d}, audio2: {audio2:4d}")
             if (counter % 1000 == 0):
-                print(f"counter: {counter}, audio: {audio1} time: {time.perf_counter()-t}")
+                print(f"counter: {counter}, audio: {audio} time: {time.perf_counter()-t}")
                 t = time.perf_counter()
             input_queue.task_done()
         except queue.Empty:
@@ -165,18 +165,16 @@ def print_counter_audio_buffered(input_queue, stop_event, buffer_size):
     t = time.perf_counter()
     while not stop_event.is_set():
         try:
-            task = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
-            audio1 = task['audio1']  # Retrieve all audio1 values
-            audio2 = task['audio2']  # Retrieve all audio2 values
+            audio = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
             #print(f"counter: {counter:4d}, audio1: {audio1:4d}, audio2: {audio2:4d}")
             counter += 1*buffer_size
-            if counter % 1000 == 0:
+            if counter % 100 == 0:
                 queue_length = input_queue.qsize()
-                print(f"counter: {counter}, audio: {audio1[buffer_size-1]:5d} time: {time.perf_counter()-t:8.4f}, queue: {queue_length} ")
+                print(f"counter: {counter}, audio: {audio} time: {time.perf_counter()-t:8.4f}, queue: {queue_length} ")
                 t = time.perf_counter()
             input_queue.task_done()
         except queue.Empty:
-            print("Empty")
+            #print("Empty")
             continue
     print("print_counter_audio_buffered_stopped")
 
