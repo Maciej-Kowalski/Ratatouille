@@ -44,8 +44,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
-COM_InitTypeDef BspCOMInit;
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
@@ -53,23 +51,16 @@ I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart1;
+
 /* USER CODE BEGIN PV */
+/*TIMO here you define global variables. Also every code you write must be
+ * inside a USER CODE section otherwise it gets overwritten. Important to remember*/
 
-/* Analog */
-uint16_t counter = 0;
-uint16_t mic = 0;
-uint16_t mic2 = 0;
-uint16_t rawValues[2];
-/* Analog END */
-
-/* USB */
-uint8_t message[] = "USB VCP Test\n";
-uint8_t flag = 0;
-char msg[50];
-
-uint8_t USB_buffer[512];
-size_t packet_length = 0;
-/* USB END */
+uint16_t rawValues[2]; //this will be location where adc readings are stored
+uint16_t sample; //this will be your audio sample every sample period
+uint8_t flag = 0; //this will notify the main loop new sample is available
+char msg[50]; //for debug messages
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -80,7 +71,10 @@ static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
+/*TIMO here definue function prototypes so you can call functions from functions without
+ * worrying about order they appear in */
 void update_data_packet_audio_buffered(uint16_t var1, uint16_t var2, uint8_t *buffer, size_t *length);
 /* USER CODE END PFP */
 
@@ -88,16 +82,15 @@ void update_data_packet_audio_buffered(uint16_t var1, uint16_t var2, uint8_t *bu
 /* USER CODE BEGIN 0 */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim2)
   {
-	HAL_GPIO_TogglePin(TIMING_GPIO_Port, TIMING_Pin);
-	////this updates the X and Y axes of my joystick
+	//HAL_GPIO_TogglePin(TIMING_GPIO_Port, TIMING_Pin);
+	////this checks the adc reading at specified frequency
 	  for(uint8_t i = 0; i<hadc1.Init.NbrOfConversion; i++){
-		  mic = (uint16_t) rawValues[0];
-		  mic2 = mic;
+		  sample = (uint16_t) rawValues[0];
 	  }
 	  flag = 1;
 
-	  //HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin);
   }
+/*TIMO here one place to define subfuctions*/
 /* USER CODE END 0 */
 
 /**
@@ -137,77 +130,30 @@ int main(void)
   MX_TIM2_Init();
   MX_USB_Device_Init();
   MX_I2C1_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
   ////This begins the process of storing our ADC readings into the DMA. The DMA can be thought of a temporary storage location.
   HAL_ADC_Start_DMA(&hadc1, (uint32_t *) rawValues, 2);
     ////This begins our timer 2
   HAL_TIM_Base_Start_IT(&htim2);
-
+  /*TIMO here setup stuff that happens once*/
   /* USER CODE END 2 */
-
-  /* Initialize leds */
-  BSP_LED_Init(LED_BLUE);
-  BSP_LED_Init(LED_GREEN);
-  BSP_LED_Init(LED_RED);
-
-  /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
-  BSP_PB_Init(BUTTON_SW1, BUTTON_MODE_EXTI);
-  BSP_PB_Init(BUTTON_SW2, BUTTON_MODE_EXTI);
-  BSP_PB_Init(BUTTON_SW3, BUTTON_MODE_EXTI);
-
-  /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
-  BspCOMInit.BaudRate   = 115200;
-  BspCOMInit.WordLength = COM_WORDLENGTH_8B;
-  BspCOMInit.StopBits   = COM_STOPBITS_1;
-  BspCOMInit.Parity     = COM_PARITY_NONE;
-  BspCOMInit.HwFlowCtl  = COM_HWCONTROL_NONE;
-  if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE)
-  {
-    Error_Handler();
-  }
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   /*                                                                          ********************************************************************* */
   while (1)
   {
-	  //bmi160ReadAccelGyro(&imu_t);
-
-	  if (flag==1){
-
-		  //HAL_GPIO_TogglePin(SIGNAL_GPIO_Port, SIGNAL_Pin);
-		  //HAL_GPIO_WritePin(SIGNAL_GPIO_Port, SIGNAL_Pin,GPIO_PIN_SET);
-		  if (counter == 32000){
-			  counter = 0;
-		  }
-		  else{
-			  counter++;
-		  }
-		  update_data_packet_audio_buffered(mic, mic2, USB_buffer, &packet_length);
-		  //HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_RESET);
-		  if (counter % 100 == 0){
-			  CDC_Transmit_FS(USB_buffer, packet_length);
-			  packet_length = 0;
-			  BSP_LED_Toggle(LED_GREEN);
-
-		  }
-
-
-
-		  //HAL_GPIO_TogglePin(LED_GREEN_Port,LED_GREEN_Pin);
-		  //snprintf(msg, sizeof(msg), "a: %.2f, g: %.2f", a_f32[0], g_f32[0]);
-		  //CDC_Transmit_FS((uint8_t *)msg, strlen(msg));
-
+	  /*TIMO this is main loop. Don't put big functions in the timer callback,
+	   *  but rather here, especially when transmitting data. As an example this code will print
+	   *  samples via UART. Get PuTTy, set appropriate serial COM port and 115200 bitrate
+	   *  and you can see the messages */
+	  if(flag == 1){
+		  snprintf(msg, sizeof(msg), "new sample: %d \r\n",sample);
+		  HAL_UART_Transmit(&huart1, (uint8_t *) msg, strlen(msg), HAL_MAX_DELAY);
+		  HAL_GPIO_TogglePin(BlueLED_GPIO_Port, BlueLED_Pin);
 		  flag = 0;
-		  //HAL_GPIO_WritePin(SIGNAL_GPIO_Port, SIGNAL_Pin,GPIO_PIN_RESET);
 	  }
-
-	  /*HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin);
-	  status = CDC_Transmit_FS(message, strlen((char*)message));
-	  if (status == USBD_OK) {
-	      HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-	  }
-	  HAL_Delay(delay);*/
 
 
   /*                                                                          ********************************************************************* */
@@ -435,7 +381,7 @@ static void MX_TIM2_Init(void)
   htim2.Instance = TIM2;
   htim2.Init.Prescaler = 1;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 800-1;
+  htim2.Init.Period = 256000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -456,6 +402,54 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
 
   /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
 
 }
 
@@ -495,6 +489,9 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, TIMING_Pin|SIGNAL_Pin, GPIO_PIN_RESET);
 
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(BlueLED_GPIO_Port, BlueLED_Pin, GPIO_PIN_RESET);
+
   /*Configure GPIO pin : TIMING_Pin */
   GPIO_InitStruct.Pin = TIMING_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -509,12 +506,19 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(SIGNAL_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : BlueLED_Pin */
+  GPIO_InitStruct.Pin = BlueLED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(BlueLED_GPIO_Port, &GPIO_InitStruct);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-
+/*TIMO here another place to define subfuctions*/
 void update_data_packet_audio_buffered(uint16_t var1, uint16_t var2, uint8_t *buffer, size_t *length) {
     // Define the start byte
 	if (*length == 0){

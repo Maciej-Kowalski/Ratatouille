@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2024 STMicroelectronics.
+  * Copyright (c) 2025 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "usb_device.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -25,12 +26,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "usbd_cdc_if.h"
-#include "bmi160_wrapper.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -44,8 +44,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-
-COM_InitTypeDef BspCOMInit;
 ADC_HandleTypeDef hadc1;
 DMA_HandleTypeDef hdma_adc1;
 
@@ -53,23 +51,28 @@ I2C_HandleTypeDef hi2c1;
 
 TIM_HandleTypeDef htim2;
 
+UART_HandleTypeDef huart1;
+
+/* Definitions for Task1 */
+osThreadId_t Task1Handle;
+const osThreadAttr_t Task1_attributes = {
+  .name = "Task1",
+  .priority = (osPriority_t) osPriorityNormal,
+  .stack_size = 1024 * 4
+};
+/* Definitions for AudioQueue */
+osMessageQueueId_t AudioQueueHandle;
+const osMessageQueueAttr_t AudioQueue_attributes = {
+  .name = "AudioQueue"
+};
+/* Definitions for TransmitMutex */
+osMutexId_t TransmitMutexHandle;
+const osMutexAttr_t TransmitMutex_attributes = {
+  .name = "TransmitMutex"
+};
 /* USER CODE BEGIN PV */
-
-/* Analog */
-uint16_t counter = 0;
-uint16_t mic = 0;
-uint16_t mic2 = 0;
-uint16_t rawValues[2];
-/* Analog END */
-
-/* USB */
-uint8_t message[] = "USB VCP Test\n";
-uint8_t flag = 0;
 char msg[50];
-
-uint8_t USB_buffer[512];
-size_t packet_length = 0;
-/* USB END */
+uint16_t ADC_reading = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,26 +81,45 @@ void PeriphCommonClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_TIM2_Init(void);
+static void MX_USART1_UART_Init(void);
+void task1_handler(void *argument);
+
 /* USER CODE BEGIN PFP */
-void update_data_packet_audio_buffered(uint16_t var1, uint16_t var2, uint8_t *buffer, size_t *length);
+void USB_transmit(uint8_t *USB_buffer, size_t length);
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim2)
-  {
-	HAL_GPIO_TogglePin(TIMING_GPIO_Port, TIMING_Pin);
-	////this updates the X and Y axes of my joystick
-	  for(uint8_t i = 0; i<hadc1.Init.NbrOfConversion; i++){
-		  mic = (uint16_t) rawValues[0];
-		  mic2 = mic;
-	  }
-	  flag = 1;
+void USB_transmit(uint8_t *USB_buffer, size_t length){
+	osStatus_t status;
 
-	  //HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin);
-  }
+	osMutexAcquire(TransmitMutexHandle, osWaitForever);
+	status = CDC_Transmit_FS(USB_buffer, length);
+	osMutexRelease(TransmitMutexHandle);
+
+	if (status != osOK){
+		HAL_GPIO_TogglePin(LD3_GPIO_Port, LD3_Pin);
+		//HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
+		//sprintf(msg, "Error, status code: %d \r\n", status);
+		//sprintf(msg, "Error");
+		//HAL_UART_Transmit(&huart1, (uint8_t *) msg, strlen(msg), HAL_MAX_DELAY);
+
+	}
+}
+void update_data_packet_audio_buffered(uint16_t var1, uint8_t *buffer, size_t *length) {
+    // Define the start byte
+	if (*length == 0){
+		buffer[0] = (uint8_t)-128;
+		(*length)++;
+	}
+    memcpy(&buffer[*length], &var1, sizeof(uint16_t));
+
+    // Set the total length of the packet
+    (*length) += sizeof(uint16_t);
+}
 /* USER CODE END 0 */
 
 /**
@@ -134,83 +156,63 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_ADC1_Init();
-  MX_TIM2_Init();
-  MX_USB_Device_Init();
   MX_I2C1_Init();
+  MX_TIM2_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-  ////This begins the process of storing our ADC readings into the DMA. The DMA can be thought of a temporary storage location.
-  HAL_ADC_Start_DMA(&hadc1, (uint32_t *) rawValues, 2);
-    ////This begins our timer 2
+  HAL_GPIO_WritePin(LD1_GPIO_Port, LD1_Pin, GPIO_PIN_SET);
+  HAL_ADC_Start_DMA(&hadc1, (uint32_t*)&ADC_reading, 1);
   HAL_TIM_Base_Start_IT(&htim2);
 
   /* USER CODE END 2 */
 
-  /* Initialize leds */
-  BSP_LED_Init(LED_BLUE);
-  BSP_LED_Init(LED_GREEN);
-  BSP_LED_Init(LED_RED);
+  /* Init scheduler */
+  osKernelInitialize();
+  /* Create the mutex(es) */
+  /* creation of TransmitMutex */
+  TransmitMutexHandle = osMutexNew(&TransmitMutex_attributes);
 
-  /* Initialize USER push-button, will be used to trigger an interrupt each time it's pressed.*/
-  BSP_PB_Init(BUTTON_SW1, BUTTON_MODE_EXTI);
-  BSP_PB_Init(BUTTON_SW2, BUTTON_MODE_EXTI);
-  BSP_PB_Init(BUTTON_SW3, BUTTON_MODE_EXTI);
+  /* USER CODE BEGIN RTOS_MUTEX */
+  /* add mutexes, ... */
+  /* USER CODE END RTOS_MUTEX */
 
-  /* Initialize COM1 port (115200, 8 bits (7-bit data + 1 stop bit), no parity */
-  BspCOMInit.BaudRate   = 115200;
-  BspCOMInit.WordLength = COM_WORDLENGTH_8B;
-  BspCOMInit.StopBits   = COM_STOPBITS_1;
-  BspCOMInit.Parity     = COM_PARITY_NONE;
-  BspCOMInit.HwFlowCtl  = COM_HWCONTROL_NONE;
-  if (BSP_COM_Init(COM1, &BspCOMInit) != BSP_ERROR_NONE)
-  {
-    Error_Handler();
-  }
+  /* USER CODE BEGIN RTOS_SEMAPHORES */
+  /* add semaphores, ... */
+  /* USER CODE END RTOS_SEMAPHORES */
+
+  /* USER CODE BEGIN RTOS_TIMERS */
+  /* start timers, add new ones, ... */
+  /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* creation of AudioQueue */
+  AudioQueueHandle = osMessageQueueNew (2000, sizeof(uint16_t), &AudioQueue_attributes);
+
+  /* USER CODE BEGIN RTOS_QUEUES */
+  /* add queues, ... */
+  /* USER CODE END RTOS_QUEUES */
+
+  /* Create the thread(s) */
+  /* creation of Task1 */
+  Task1Handle = osThreadNew(task1_handler, NULL, &Task1_attributes);
+
+  /* USER CODE BEGIN RTOS_THREADS */
+  /* add threads, ... */
+  /* USER CODE END RTOS_THREADS */
+
+  /* USER CODE BEGIN RTOS_EVENTS */
+  /* add events, ... */
+  /* USER CODE END RTOS_EVENTS */
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  /*                                                                          ********************************************************************* */
   while (1)
   {
-	  //bmi160ReadAccelGyro(&imu_t);
-
-	  if (flag==1){
-
-		  //HAL_GPIO_TogglePin(SIGNAL_GPIO_Port, SIGNAL_Pin);
-		  //HAL_GPIO_WritePin(SIGNAL_GPIO_Port, SIGNAL_Pin,GPIO_PIN_SET);
-		  if (counter == 32000){
-			  counter = 0;
-		  }
-		  else{
-			  counter++;
-		  }
-		  update_data_packet_audio_buffered(mic, mic2, USB_buffer, &packet_length);
-		  //HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_RESET);
-		  if (counter % 100 == 0){
-			  CDC_Transmit_FS(USB_buffer, packet_length);
-			  packet_length = 0;
-			  BSP_LED_Toggle(LED_GREEN);
-
-		  }
-
-
-
-		  //HAL_GPIO_TogglePin(LED_GREEN_Port,LED_GREEN_Pin);
-		  //snprintf(msg, sizeof(msg), "a: %.2f, g: %.2f", a_f32[0], g_f32[0]);
-		  //CDC_Transmit_FS((uint8_t *)msg, strlen(msg));
-
-		  flag = 0;
-		  //HAL_GPIO_WritePin(SIGNAL_GPIO_Port, SIGNAL_Pin,GPIO_PIN_RESET);
-	  }
-
-	  /*HAL_GPIO_TogglePin(LED_GREEN_GPIO_Port,LED_GREEN_Pin);
-	  status = CDC_Transmit_FS(message, strlen((char*)message));
-	  if (status == USBD_OK) {
-	      HAL_GPIO_TogglePin(LED_RED_GPIO_Port,LED_RED_Pin);
-	  }
-	  HAL_Delay(delay);*/
-
-
-  /*                                                                          ********************************************************************* */
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -320,14 +322,14 @@ static void MX_ADC1_Init(void)
   /** Common config
   */
   hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV1;
+  hadc1.Init.ClockPrescaler = ADC_CLOCK_ASYNC_DIV1;
   hadc1.Init.Resolution = ADC_RESOLUTION_12B;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.ScanConvMode = ADC_SCAN_ENABLE;
+  hadc1.Init.ScanConvMode = ADC_SCAN_DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   hadc1.Init.LowPowerAutoWait = DISABLE;
   hadc1.Init.ContinuousConvMode = ENABLE;
-  hadc1.Init.NbrOfConversion = 2;
+  hadc1.Init.NbrOfConversion = 1;
   hadc1.Init.DiscontinuousConvMode = DISABLE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
@@ -347,15 +349,6 @@ static void MX_ADC1_Init(void)
   sConfig.SingleDiff = ADC_SINGLE_ENDED;
   sConfig.OffsetNumber = ADC_OFFSET_NONE;
   sConfig.Offset = 0;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Configure Regular Channel
-  */
-  sConfig.Channel = ADC_CHANNEL_2;
-  sConfig.Rank = ADC_REGULAR_RANK_2;
   if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
   {
     Error_Handler();
@@ -433,9 +426,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 1;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 800-1;
+  htim2.Init.Period = 16000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -460,6 +453,54 @@ static void MX_TIM2_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetTxFifoThreshold(&huart1, UART_TXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_SetRxFifoThreshold(&huart1, UART_RXFIFO_THRESHOLD_1_8) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_UARTEx_DisableFifoMode(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * Enable DMA controller clock
   */
 static void MX_DMA_Init(void)
@@ -471,7 +512,7 @@ static void MX_DMA_Init(void)
 
   /* DMA interrupt init */
   /* DMA1_Channel1_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 0, 0);
+  HAL_NVIC_SetPriority(DMA1_Channel1_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel1_IRQn);
 
 }
@@ -493,21 +534,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, TIMING_Pin|SIGNAL_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LD2_Pin|LD3_Pin|LD1_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : TIMING_Pin */
-  GPIO_InitStruct.Pin = TIMING_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_MEDIUM;
-  HAL_GPIO_Init(TIMING_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : SIGNAL_Pin */
-  GPIO_InitStruct.Pin = SIGNAL_Pin;
+  /*Configure GPIO pins : LD2_Pin LD3_Pin LD1_Pin */
+  GPIO_InitStruct.Pin = LD2_Pin|LD3_Pin|LD1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(SIGNAL_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -515,19 +549,94 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void update_data_packet_audio_buffered(uint16_t var1, uint16_t var2, uint8_t *buffer, size_t *length) {
-    // Define the start byte
-	if (*length == 0){
-		buffer[0] = (uint8_t)-128;
-		(*length)++;
-	}
-    memcpy(&buffer[*length], &var1, sizeof(uint16_t));
-    memcpy(&buffer[*length + sizeof(uint16_t)], &var2, sizeof(uint16_t));
-
-    // Set the total length of the packet
-    (*length) += 2*sizeof(uint16_t);
-}
 /* USER CODE END 4 */
+
+/* USER CODE BEGIN Header_task1_handler */
+/**
+  * @brief  Function implementing the Task1 thread.
+  * @param  argument: Not used
+  * @retval None
+  */
+/* USER CODE END Header_task1_handler */
+void task1_handler(void *argument)
+{
+  /* init code for USB_Device */
+  MX_USB_Device_Init();
+  /* USER CODE BEGIN 5 */
+  uint16_t sample;
+  uint8_t USB_buffer[2000];
+  size_t length = 0;
+  uint16_t test = 0;
+
+
+
+  /* Infinite loop */
+  for(;;)
+  {
+	  osThreadFlagsWait(0x01, osFlagsWaitAny, osWaitForever);
+	  //sprintf(msg, "task1_unblocked \r\n\n");
+	  //HAL_UART_Transmit(&huart1, (uint8_t *) msg, strlen(msg), HAL_MAX_DELAY);
+	  HAL_GPIO_TogglePin(LD2_GPIO_Port, LD2_Pin);
+
+//	  test = osMessageQueueGetCount(AudioQueueHandle);
+//	  sprintf(msg, "queue accessed - %d in queue\r\n", test);
+//	  HAL_UART_Transmit(&huart1, (uint8_t *) msg, strlen(msg), HAL_MAX_DELAY);
+
+	  for(uint16_t i = 0; i < AUDIO_PACKET_SIZE; i++)
+	  {
+		  osMessageQueueGet(AudioQueueHandle, &sample, NULL, osWaitForever);
+		  //sprintf(msg, "queue gotten - %d \r\n", sample);
+		  //HAL_UART_Transmit(&huart1, (uint8_t *) msg, strlen(msg), HAL_MAX_DELAY);
+		  update_data_packet_audio_buffered(sample,USB_buffer,&length);
+	  }
+
+	  USB_transmit(USB_buffer, length);
+	  length = 0;
+
+	  //sprintf(msg, "task1_finished \r\n\n");
+	  //HAL_UART_Transmit(&huart1, (uint8_t *) msg, strlen(msg), HAL_MAX_DELAY);
+  }
+  /* USER CODE END 5 */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM1 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM1) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+  if (htim->Instance == TIM2) {
+	static uint16_t sample_count = 0;
+
+	// Add to queue
+	//osMessageQueuePut(AudioQueueHandle, (const void*)&ADC_reading, 0, 0);
+	osMessageQueuePut(AudioQueueHandle, (const void*)&sample_count, 0, 0);
+
+	//sprintf(msg, "Put on queue - %d \r\n", sample_count);
+	//HAL_UART_Transmit(&huart1, (uint8_t *) msg, strlen(msg), HAL_MAX_DELAY);
+
+	sample_count++;
+
+	// Use the local counter to determine when to signal
+	if(sample_count == AUDIO_PACKET_SIZE)
+	{
+		sample_count = 0;
+		osThreadFlagsSet(Task1Handle, 0x01);
+	}
+  }
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.
