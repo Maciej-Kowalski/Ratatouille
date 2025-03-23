@@ -6,6 +6,7 @@ from filters import complementary_filter
 from filters import EK_filter
 from outputs import print_counter_audio
 from outputs import print_counter_audio_buffered
+from outputs import timing_audio_buffered
 from outputs import print_raw_IMU
 from outputs import print_comp_IMU
 from outputs import print_EK_filter_IMU
@@ -15,11 +16,12 @@ from outputs import mouse_cursor_mapping_no_cal
 def audioBuff():
     try:
         serial_settings = {
-            "port": "COM19",
+            "port": "COM16",
             "baudrate": 115200,
             "timeout": 1
         }
-        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_counter_audio_buffered)
+        #prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_counter_audio_buffered)
+        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=timing_audio_buffered)
         prototype.start()
     except Exception as e:
         print(e)

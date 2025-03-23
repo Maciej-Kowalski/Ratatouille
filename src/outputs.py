@@ -165,7 +165,7 @@ def print_counter_audio_buffered(input_queue, stop_event, buffer_size):
     t = time.perf_counter()
     while not stop_event.is_set():
         try:
-            audio = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            audio = input_queue.get(timeout = 0.1)  # Use timeout to prevent hanging
             #print(f"counter: {counter:4d}, audio1: {audio1:4d}, audio2: {audio2:4d}")
             counter += 1*buffer_size
             if counter % 100 == 0:
@@ -177,6 +177,50 @@ def print_counter_audio_buffered(input_queue, stop_event, buffer_size):
             #print("Empty")
             continue
     print("print_counter_audio_buffered_stopped")
+
+import time
+import queue
+import csv
+
+def timing_audio_buffered(input_queue, stop_event, buffer_size):
+    counter = 0
+    t_start = time.perf_counter()
+    t_last_packet = t_start
+    data = []  # Array to store results
+    first_packet_received = False
+
+    while not stop_event.is_set():
+        try:
+            audio = input_queue.get(timeout=0.1)  # Use timeout to prevent hanging
+            if not first_packet_received:
+                first_packet_received = True
+                t_start = time.perf_counter()  # Start the 10-second timer
+
+            counter += 1 * buffer_size
+            t_now = time.perf_counter()
+            time_elapsed = t_now - t_last_packet
+            queue_length = input_queue.qsize()
+
+            # Store data in the array
+            data.append([counter, audio[0], audio[-1], time_elapsed, queue_length])
+
+            t_last_packet = t_now
+
+            # Check if 10 seconds have passed since the first packet
+            if t_now - t_start >= 4:
+                break
+
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+
+    # Save data to a CSV file
+    with open("audio_data_3200.csv", "w", newline="") as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow(["Counter", "First Element", "Last Element", "Time Elapsed", "Queue Size"])  # Header
+        csv_writer.writerows(data)  # Write all rows
+
+    print("Done")
 
 def test_monitors():
     m = get_monitors()

@@ -81,7 +81,7 @@ static void MX_ADC1_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
-void update_data_packet_audio_buffered(uint16_t var1, uint16_t var2, uint8_t *buffer, size_t *length);
+void update_data_packet_audio_buffered(uint16_t var1, uint8_t *buffer, size_t *length);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -183,9 +183,9 @@ int main(void)
 		  else{
 			  counter++;
 		  }
-		  update_data_packet_audio_buffered(mic, mic2, USB_buffer, &packet_length);
+		  update_data_packet_audio_buffered(counter, USB_buffer, &packet_length);
 		  //HAL_GPIO_WritePin(TIMING_GPIO_Port, TIMING_Pin,GPIO_PIN_RESET);
-		  if (counter % 100 == 0){
+		  if (counter % 200 == 0){
 			  CDC_Transmit_FS(USB_buffer, packet_length);
 			  packet_length = 0;
 			  BSP_LED_Toggle(LED_GREEN);
@@ -433,9 +433,9 @@ static void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 1;
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period = 800-1;
+  htim2.Init.Period = 2000-1;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -515,17 +515,16 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void update_data_packet_audio_buffered(uint16_t var1, uint16_t var2, uint8_t *buffer, size_t *length) {
+void update_data_packet_audio_buffered(uint16_t var1, uint8_t *buffer, size_t *length) {
     // Define the start byte
 	if (*length == 0){
 		buffer[0] = (uint8_t)-128;
 		(*length)++;
 	}
     memcpy(&buffer[*length], &var1, sizeof(uint16_t));
-    memcpy(&buffer[*length + sizeof(uint16_t)], &var2, sizeof(uint16_t));
 
     // Set the total length of the packet
-    (*length) += 2*sizeof(uint16_t);
+    (*length) += sizeof(uint16_t);
 }
 /* USER CODE END 4 */
 
