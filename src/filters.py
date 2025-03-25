@@ -31,11 +31,28 @@ def no_filter(input_queue, output_queue, stop_event):
     print("no_filter_stopped")
 
 def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
-    # Bandpass filter parameters (same as in your example)
+    import numpy as np
+    from scipy.signal import butter, filtfilt
+    import queue
+    import time
+    from pynput.mouse import Button, Controller
+    
+    # Parameters (same as in your example)
     SAMPLE_RATE = 16500  # Sampling rate (Hz)
     LOWCUT = 7000.0      # Low-frequency cutoff (Hz)
     HIGHCUT = 8000.0     # High-frequency cutoff (Hz)
     FILTER_ORDER = 5
+    
+    # Sliding-window click detection parameters
+    WINDOW_DURATION = 0.1  # Length of the window (seconds)
+    POSITIVE_THRESHOLD = 0.20  # Must go above this
+    NEGATIVE_THRESHOLD = -POSITIVE_THRESHOLD  # Must go below this
+    WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
+    
+    # Cooldown variables
+    click_count = 0
+    last_click_time = 0.0
+    click_cooldown = 0.18  # seconds to wait before next click
     
     # Pre-compute filter coefficients
     nyquist = 0.5 * SAMPLE_RATE
@@ -43,15 +60,59 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
     high = HIGHCUT / nyquist
     b, a = butter(FILTER_ORDER, [low, high], btype='band')
     
+    # Buffer to maintain context for click detection
+    buffer_duration = 0.5  # seconds of context to maintain
+    buffer_size = int(buffer_duration * SAMPLE_RATE)
+    context_buffer = np.zeros(buffer_size)
+    
+    # Click detection function
+    def detect_click_sliding_window(signal):
+        """
+        Check if the window has a max above threshold AND a min below threshold.
+        """
+        if len(signal) < WINDOW_SIZE:
+            window = signal
+        else:
+            window = signal[-WINDOW_SIZE:]
+
+        window_max = np.max(window)
+        window_min = np.min(window)
+
+        # Condition: has it gone above and below thresholds in the same window?
+        return (window_max > POSITIVE_THRESHOLD and window_min < NEGATIVE_THRESHOLD)
+    
+    # Mouse click function
+    def left_click():
+        mouse = Controller()
+        mouse.click(Button.left, 1)
+    
     while not stop_event.is_set():
         try:
             # Get audio data from input queue
             task = input_queue.get(timeout=0.01)
             
-            # Add code here - Apply bandpass filter
             if isinstance(task, np.ndarray):
-                # Apply zero-phase Butterworth bandpass filter
+                # Apply bandpass filter
                 filtered_audio = filtfilt(b, a, task)
+                
+                # Update the context buffer with new filtered data
+                if len(filtered_audio) < buffer_size:
+                    # Shift buffer and add new data
+                    context_buffer = np.roll(context_buffer, -len(filtered_audio))
+                    context_buffer[-len(filtered_audio):] = filtered_audio
+                else:
+                    # If new data is larger than buffer, just use the newest portion
+                    context_buffer = filtered_audio[-buffer_size:]
+                
+                # Check for click using the sliding window approach
+                now = time.time()
+                if detect_click_sliding_window(context_buffer):
+                    # Only register a new click if cooldown has passed
+                    if now - last_click_time > click_cooldown:
+                        click_count += 1
+                        last_click_time = now
+                        print(f"Click {click_count} detected!")
+                        left_click()
                 
                 # Put filtered data in output queue
                 output_queue.put(filtered_audio)
