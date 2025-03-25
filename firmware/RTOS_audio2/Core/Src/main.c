@@ -622,7 +622,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	osStatus_t status;
 
 	//update buffer
-	memcpy(&active_buffer[2*sample_count+1], &sample_count, sizeof(uint16_t));
+	//memcpy(&active_buffer[2*sample_count+1], &sample_count, sizeof(uint16_t));
+	memcpy(&active_buffer[2*sample_count+1], &ADC_reading, sizeof(uint16_t));
 
 
 	sample_count++;

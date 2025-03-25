@@ -12,16 +12,17 @@ from outputs import print_comp_IMU
 from outputs import print_EK_filter_IMU
 from outputs import mouse_cursor_mapping
 from outputs import mouse_cursor_mapping_no_cal
+from outputs import plot_audio_buffered
 
 def audioBuff():
     try:
         serial_settings = {
-            "port": "COM16",
+            "port": "COM10",
             "baudrate": 115200,
             "timeout": 1
         }
-        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_counter_audio_buffered)
-        #prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=timing_audio_buffered)
+        #prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_counter_audio_buffered)
+        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=plot_audio_buffered)
         prototype.start()
     except Exception as e:
         print(e)

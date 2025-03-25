@@ -13,4 +13,4 @@
 ../Core/Src/main.c:536:6:USB_transmit	1
 ../Core/Src/main.c:561:6:task1_handler	1
 ../Core/Src/main.c:605:6:HAL_TIM_PeriodElapsedCallback	5
-../Core/Src/main.c:654:6:Error_Handler	1
+../Core/Src/main.c:655:6:Error_Handler	1
