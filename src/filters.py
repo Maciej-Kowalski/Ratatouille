@@ -15,6 +15,8 @@ import csv
 import REKF as rek
 from scipy import signal
 ##### EKF libraries end #####
+from scipy.signal import butter, filtfilt
+
 
 #the most up-to-date pipeline structure
 def no_filter(input_queue, output_queue, stop_event):
@@ -27,6 +29,41 @@ def no_filter(input_queue, output_queue, stop_event):
         except queue.Empty:
             continue
     print("no_filter_stopped")
+
+def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
+    # Bandpass filter parameters (same as in your example)
+    SAMPLE_RATE = 16500  # Sampling rate (Hz)
+    LOWCUT = 7000.0      # Low-frequency cutoff (Hz)
+    HIGHCUT = 8000.0     # High-frequency cutoff (Hz)
+    FILTER_ORDER = 5
+    
+    # Pre-compute filter coefficients
+    nyquist = 0.5 * SAMPLE_RATE
+    low = LOWCUT / nyquist
+    high = HIGHCUT / nyquist
+    b, a = butter(FILTER_ORDER, [low, high], btype='band')
+    
+    while not stop_event.is_set():
+        try:
+            # Get audio data from input queue
+            task = input_queue.get(timeout=0.01)
+            
+            # Add code here - Apply bandpass filter
+            if isinstance(task, np.ndarray):
+                # Apply zero-phase Butterworth bandpass filter
+                filtered_audio = filtfilt(b, a, task)
+                
+                # Put filtered data in output queue
+                output_queue.put(filtered_audio)
+            else:
+                # If it's not a numpy array, pass through unchanged
+                output_queue.put(task)
+                
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+    
+    print("audio_bandpass_high_F_filter_stopped")
 
 def EK_filter(input_queue, output_queue, stop_event):
     print("ek_filter run")
