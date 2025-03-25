@@ -185,7 +185,7 @@ import time
 import queue
 import csv
 
-def plot_audio_buffered(input_queue, stop_event, buffer_size, plot_interval=100, max_points=10000):
+def plot_audio_buffered(input_queue, stop_event, buffer_size, plot_interval=100, max_points=5000):
     # Set up the figure and axis
     plt.ion()  # Turn on interactive mode
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -287,7 +287,7 @@ def timing_audio_buffered(input_queue, stop_event, buffer_size):
             counter += 1 * buffer_size
             t_now = time.perf_counter()
             time_elapsed = t_now - t_last_packet
-            #queue_length = input_queue.qsize()
+            queue_length = input_queue.qsize()
 
             # Store data in the array
             data.append([counter, audio[0], audio[-1], time_elapsed, queue_length])

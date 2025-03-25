@@ -22,7 +22,7 @@ def audioBuff():
             "timeout": 1
         }
         #prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_counter_audio_buffered)
-        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=plot_audio_buffered)
+        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_counter_audio_buffered)
         prototype.start()
     except Exception as e:
         print(e)
