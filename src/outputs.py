@@ -1,8 +1,11 @@
 import queue
 import threading
 import time
+import numpy as np
 from pynput.mouse import Button, Controller
 from screeninfo import get_monitors
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
 def print_raw_IMU(input_queue, stop_event):
     while not stop_event.is_set():
@@ -181,6 +184,85 @@ def print_counter_audio_buffered(input_queue, stop_event, buffer_size):
 import time
 import queue
 import csv
+
+def plot_audio_buffered(input_queue, stop_event, buffer_size, plot_interval=100, max_points=10000):
+    # Set up the figure and axis
+    plt.ion()  # Turn on interactive mode
+    fig, ax = plt.subplots(figsize=(10, 5))
+    
+    # Configure plot for audio waveform only
+    ax.set_title('Live Audio Waveform')
+    ax.set_xlabel('Sample Number')
+    ax.set_ylabel('Amplitude')
+    ax.grid(True, alpha=0.3)
+    
+    # Create the waveform line
+    waveform_line, = ax.plot([], [], 'b-', linewidth=0.5)
+    
+    # Initialize data storage
+    all_samples = np.array([], dtype=np.int16)
+    
+    counter = 0
+    t_start = time.perf_counter()
+    
+    try:
+        while not stop_event.is_set():
+            try:
+                # Get audio buffer from queue with timeout
+                audio_buffer = input_queue.get(timeout=0.1)
+                counter += buffer_size
+                
+                # Convert to numpy array if it isn't already
+                if not isinstance(audio_buffer, np.ndarray):
+                    audio_buffer = np.array(audio_buffer)
+                
+                # Append new samples to our record
+                all_samples = np.append(all_samples, audio_buffer)
+                
+                # Limit the number of points to avoid memory issues
+                if len(all_samples) > max_points:
+                    all_samples = all_samples[-max_points:]
+                
+                # Process at regular intervals
+                if counter % plot_interval == 0:
+                    # Update the plot
+                    x_data = np.arange(len(all_samples))
+                    waveform_line.set_data(x_data, all_samples)
+                    
+                    # Adjust axis limits
+                    ax.set_xlim(max(0, len(all_samples) - max_points), len(all_samples))
+                    
+                    # Find min/max of visible data for y-axis
+                    visible_data = all_samples[-max_points:] if len(all_samples) > max_points else all_samples
+                    y_min = np.min(visible_data) if len(visible_data) > 0 else -1
+                    y_max = np.max(visible_data) if len(visible_data) > 0 else 1
+                    margin = (y_max - y_min) * 0.1 if y_max > y_min else 10
+                    ax.set_ylim(y_min - margin, y_max + margin)
+                    
+                    # Update title with sample count
+                    elapsed = time.perf_counter() - t_start
+                    ax.set_title(f'Live Audio Waveform - Samples: {len(all_samples):,}, Time: {elapsed:.2f}s')
+                    
+                    # Refresh the plot
+                    fig.canvas.draw_idle()
+                    fig.canvas.flush_events()
+                
+                # Mark as done
+                input_queue.task_done()
+            
+            except queue.Empty:
+                # Just continue if queue is empty
+                continue
+    
+    except KeyboardInterrupt:
+        print("Plot interrupted by user")
+    
+    finally:
+        print("plot_audio_buffered stopped")
+        plt.ioff()
+        plt.close(fig)
+
+
 
 def timing_audio_buffered(input_queue, stop_event, buffer_size):
     counter = 0

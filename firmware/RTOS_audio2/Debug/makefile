@@ -68,8 +68,8 @@ all: main-build
 main-build: RTOS_audio2.elf secondary-outputs
 
 # Tool invocations
-RTOS_audio2.elf RTOS_audio2.map: $(OBJS) $(USER_OBJS) C:\Users\joham\STM32CubeIDE\workspace_1.16.1\RTOS_audio2\STM32WB55RGVX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "RTOS_audio2.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\STM32CubeIDE\workspace_1.16.1\RTOS_audio2\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="RTOS_audio2.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+RTOS_audio2.elf RTOS_audio2.map: $(OBJS) $(USER_OBJS) C:\Users\timm2\Git\ Projects\Ratatouille-1\firmware\RTOS_audio2\STM32WB55RGVX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "RTOS_audio2.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\timm2\Git Projects\Ratatouille-1\firmware\RTOS_audio2\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="RTOS_audio2.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
