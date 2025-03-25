@@ -7,6 +7,21 @@ from screeninfo import get_monitors
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
+def no_output(input_queue, stop_event, _):
+    while not stop_event.is_set():
+        try:
+            audio = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+        except queue.Empty:
+            continue
+    print("no_output stopped")
+def print_continuous_audio(input_queue, stop_event, _):
+    while not stop_event.is_set():
+        try:
+            audio = input_queue.get(timeout = 0.01)  # Use timeout to prevent hanging
+            print(f'{audio[0]:+6.4f}')
+        except queue.Empty:
+            continue
+    print("print_continuous_aud stopped")
 def print_raw_IMU(input_queue, stop_event):
     while not stop_event.is_set():
         try:
@@ -274,7 +289,7 @@ def timing_audio_buffered(input_queue, stop_event, buffer_size):
     data = []  # Array to store results
     first_packet_received = False
     packets_received = 0
-    
+
     while not stop_event.is_set():
         try:
             audio = input_queue.get(timeout=0.1)  # Use timeout to prevent hanging

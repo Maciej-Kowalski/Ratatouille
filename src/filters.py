@@ -45,7 +45,7 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
     
     # Sliding-window click detection parameters
     WINDOW_DURATION = 0.1  # Length of the window (seconds)
-    POSITIVE_THRESHOLD = 0.20  # Must go above this
+    POSITIVE_THRESHOLD = 0.80  # Must go above this
     NEGATIVE_THRESHOLD = -POSITIVE_THRESHOLD  # Must go below this
     WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
     
@@ -111,8 +111,8 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
                     if now - last_click_time > click_cooldown:
                         click_count += 1
                         last_click_time = now
-                        print(f"Click {click_count} detected!")
-                        left_click()
+                        #print(f"Click {click_count} detected!")
+                        #left_click()
                 
                 # Put filtered data in output queue
                 output_queue.put(filtered_audio)
