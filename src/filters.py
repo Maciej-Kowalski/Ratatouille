@@ -31,10 +31,6 @@ def no_filter(input_queue, output_queue, stop_event):
     print("no_filter_stopped")
 
 def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
-    import numpy as np
-    from scipy.signal import butter, filtfilt
-    import queue
-    import time
     from pynput.mouse import Button, Controller
     
     # Parameters (same as in your example)
@@ -44,15 +40,16 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
     FILTER_ORDER = 5
     
     # Sliding-window click detection parameters
-    WINDOW_DURATION = 0.1  # Length of the window (seconds)
-    POSITIVE_THRESHOLD = 0.80  # Must go above this
+    WINDOW_DURATION = 0.05  # Length of the window (seconds)
+    POSITIVE_THRESHOLD = 800  # Must go above this
     NEGATIVE_THRESHOLD = -POSITIVE_THRESHOLD  # Must go below this
+    COUNT_THRESHOLD = 3  # Number of threshold crossings needed in window
     WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
     
     # Cooldown variables
     click_count = 0
     last_click_time = 0.0
-    click_cooldown = 0.18  # seconds to wait before next click
+    click_cooldown = 0.25  # seconds to wait before next click
     
     # Pre-compute filter coefficients
     nyquist = 0.5 * SAMPLE_RATE
@@ -65,10 +62,10 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
     buffer_size = int(buffer_duration * SAMPLE_RATE)
     context_buffer = np.zeros(buffer_size)
     
-    # Click detection function
+    # Click detection function with counting threshold
     def detect_click_sliding_window(signal):
         """
-        Check if the window has a max above threshold AND a min below threshold.
+        Check if the window has enough threshold crossings and meets amplitude criteria.
         """
         if len(signal) < WINDOW_SIZE:
             window = signal
@@ -78,8 +75,26 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
         window_max = np.max(window)
         window_min = np.min(window)
 
-        # Condition: has it gone above and below thresholds in the same window?
-        return (window_max > POSITIVE_THRESHOLD and window_min < NEGATIVE_THRESHOLD)
+        # First check: amplitude criteria
+        if window_max <= POSITIVE_THRESHOLD or window_min >= NEGATIVE_THRESHOLD:
+            return False
+            
+        # Count threshold crossings
+        # We'll count how many times the signal crosses from below to above positive threshold
+        # and from above to below negative threshold
+        crossing_count = 0
+        
+        for i in range(1, len(window)):
+            # Positive threshold crossings
+            if window[i-1] < POSITIVE_THRESHOLD and window[i] >= POSITIVE_THRESHOLD:
+                crossing_count += 1
+                
+            # Negative threshold crossings
+            if window[i-1] > NEGATIVE_THRESHOLD and window[i] <= NEGATIVE_THRESHOLD:
+                crossing_count += 1
+        
+        # Return true if we have enough crossings
+        return crossing_count >= COUNT_THRESHOLD
     
     # Mouse click function
     def left_click():
@@ -104,15 +119,15 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
                     # If new data is larger than buffer, just use the newest portion
                     context_buffer = filtered_audio[-buffer_size:]
                 
-                # Check for click using the sliding window approach
+                # Check for click using the enhanced sliding window approach
                 now = time.time()
                 if detect_click_sliding_window(context_buffer):
                     # Only register a new click if cooldown has passed
                     if now - last_click_time > click_cooldown:
                         click_count += 1
                         last_click_time = now
-                        #print(f"Click {click_count} detected!")
-                        #left_click()
+                        print(f"Click {click_count} detected! ({time.strftime('%H:%M:%S')})")
+                        left_click()
                 
                 # Put filtered data in output queue
                 output_queue.put(filtered_audio)
@@ -123,6 +138,8 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
             input_queue.task_done()
         except queue.Empty:
             continue
+        except Exception as e:
+            print(f"Error in audio bandpass filter: {str(e)}")
     
     print("audio_bandpass_high_F_filter_stopped")
 

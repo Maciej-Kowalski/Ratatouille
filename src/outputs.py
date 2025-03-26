@@ -278,6 +278,358 @@ def plot_audio_buffered(input_queue, stop_event, buffer_size, plot_interval=100,
         plt.close(fig)
 
 
+def plot_continuous_audio(input_queue, stop_event, _):
+    # Plot parameters
+    BUFFER_SIZE = 5000  # Number of samples to display
+    UPDATE_INTERVAL = 100  # Update plot every 50ms
+    
+    # Initialize plot
+    plt.ion()  # Turn on interactive mode
+    fig, ax = plt.subplots(figsize=(10, 5))
+    
+    # Create empty line
+    line, = ax.plot([], [], 'b-', linewidth=0.8)
+    
+    # Configure plot
+    ax.set_title('Live Audio Waveform')
+    ax.set_xlabel('Sample Number')
+    ax.set_ylabel('Amplitude')
+    ax.set_ylim(-500, 4000)  # Assuming normalized audio (-1 to 1)
+    ax.grid(True, alpha=0.3)
+    
+    # Initialize data buffer
+    data_buffer = np.zeros(BUFFER_SIZE)
+    
+    # For tracking performance
+    last_update_time = time.time()
+    sample_count = 0
+    
+    try:
+        while not stop_event.is_set():
+            try:
+                # Get audio data from queue
+                audio = input_queue.get(timeout=0.01)
+                
+                # Shift buffer and add new samples
+                shift_size = min(len(audio), BUFFER_SIZE)
+                data_buffer = np.roll(data_buffer, -shift_size)
+                
+                # Add new data to the end of the buffer
+                if len(audio) >= shift_size:
+                    data_buffer[-shift_size:] = audio[-shift_size:]
+                else:
+                    data_buffer[-len(audio):] = audio
+                
+                sample_count += len(audio)
+                input_queue.task_done()
+                
+                # Update plot at regular intervals
+                current_time = time.time()
+                if current_time - last_update_time > UPDATE_INTERVAL/1000:
+                    # Update plot data
+                    x_data = np.arange(BUFFER_SIZE)
+                    line.set_data(x_data, data_buffer)
+                    
+                    # Adjust plot limits if needed
+                    ax.set_xlim(0, BUFFER_SIZE)
+                    
+                    # Update title with info
+                    ax.set_title(f'Live Audio Waveform - Samples: {sample_count}')
+                    
+                    # Redraw the plot
+                    fig.canvas.draw_idle()
+                    fig.canvas.flush_events()
+                    
+                    # Reset timer
+                    last_update_time = current_time
+                    
+            except queue.Empty:
+                # # Update plot occasionally even when queue is empty
+                # if time.time() - last_update_time > UPDATE_INTERVAL/1000:
+                #     fig.canvas.draw_idle()
+                #     fig.canvas.flush_events()
+                #     last_update_time = time.time()
+                continue
+                
+    except KeyboardInterrupt:
+        print("Plot interrupted by user")
+    
+    finally:
+        print("plot_continuous_audio stopped")
+        plt.ioff()
+        plt.close(fig)
+
+
+def plot_audio_with_fft(input_queue, stop_event, _):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    import queue
+    import time
+    
+    # Plot parameters
+    SAMPLE_RATE = 16500  # Hz (matching your previous code)
+    BUFFER_SIZE = 4096   # Number of samples to display (power of 2 for efficient FFT)
+    UPDATE_INTERVAL = 100  # Update plot every 50ms
+    
+    # For time display
+    TIME_WINDOW = BUFFER_SIZE / SAMPLE_RATE  # Duration in seconds
+    
+    # Initialize plot with two subplots
+    plt.ion()  # Turn on interactive mode
+    fig, (ax_time, ax_freq) = plt.subplots(2, 1, figsize=(12, 8))
+    
+    # Create empty lines
+    line_time, = ax_time.plot([], [], 'b-', linewidth=0.8)
+    line_freq, = ax_freq.plot([], [], 'r-', linewidth=0.8)
+    
+    # Configure time domain plot
+    ax_time.set_title('Live Audio Waveform')
+    ax_time.set_xlabel('Time (seconds)')
+    ax_time.set_ylabel('Amplitude')
+    ax_time.set_ylim(-1000, 5000)
+    ax_time.grid(True, alpha=0.3)
+    
+    # Set x-axis to show time instead of sample numbers
+    x_time = np.linspace(0, TIME_WINDOW, BUFFER_SIZE)
+    ax_time.set_xlim(0, TIME_WINDOW)
+    
+    # Configure frequency domain plot
+    ax_freq.set_title('Frequency Spectrum')
+    ax_freq.set_xlabel('Frequency (Hz)')
+    ax_freq.set_ylabel('Magnitude (dB)')
+    ax_freq.set_ylim(0, 160)
+    ax_freq.grid(True, alpha=0.3)
+    
+    # Frequency axis setup
+    freqs = np.fft.rfftfreq(BUFFER_SIZE, 1/SAMPLE_RATE)
+    ax_freq.set_xlim(0, SAMPLE_RATE/2)  # Nyquist frequency
+    
+    # Add vertical lines for the bandpass region
+    LOWCUT, HIGHCUT = 7000.0, 8000.0  # from your previous code
+    ax_freq.axvline(x=LOWCUT, color='g', linestyle='--', alpha=0.5, label='Filter Cutoff')
+    ax_freq.axvline(x=HIGHCUT, color='g', linestyle='--', alpha=0.5)
+    ax_freq.legend(loc='upper right')
+    
+    # Initialize data buffer with zeros
+    data_buffer = np.zeros(BUFFER_SIZE)
+    
+    # For tracking performance
+    last_update_time = time.time()
+    sample_count = 0
+    
+    # Window function for FFT (reduces spectral leakage)
+    window = np.hanning(BUFFER_SIZE)
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    try:
+        while not stop_event.is_set():
+            try:
+                # Get audio data from queue
+                audio = input_queue.get(timeout=0.01)
+                
+                # Shift buffer and add new samples
+                shift_size = min(len(audio), BUFFER_SIZE)
+                data_buffer = np.roll(data_buffer, -shift_size)
+                
+                # Add new data to the end of the buffer
+                if len(audio) >= shift_size:
+                    data_buffer[-shift_size:] = audio[-shift_size:]
+                else:
+                    data_buffer[-len(audio):] = audio
+                
+                sample_count += len(audio)
+                input_queue.task_done()
+                
+                # Update plot at regular intervals
+                current_time = time.time()
+                if current_time - last_update_time > UPDATE_INTERVAL/1000:
+                    # Update time domain plot with proper time axis
+                    line_time.set_data(x_time, data_buffer)
+                    
+                    # Calculate FFT (apply window to reduce spectral leakage)
+                    windowed_data = data_buffer * window
+                    fft_data = np.fft.rfft(windowed_data)
+                    
+                    # Convert to magnitude in dB scale (with noise floor)
+                    magnitude = np.abs(fft_data)
+                    magnitude_db = 20 * np.log10(magnitude + 1e-10)  # Add small value to avoid log(0)
+                    
+                    # Update frequency domain plot
+                    line_freq.set_data(freqs, magnitude_db)
+                    
+                    # Dynamically adjust y-axis for time domain
+                    data_min = np.min(data_buffer)
+                    data_max = np.max(data_buffer)
+                    margin = max(0.1, (data_max - data_min) * 0.1)
+                    ax_time.set_ylim(data_min - margin, data_max + margin)
+                    
+                    # Update titles with info
+                    ax_time.set_title(f'Live Audio Waveform ({TIME_WINDOW:.2f} sec window) - Total Samples: {sample_count}')
+                    
+                    # Redraw the plots
+                    fig.canvas.draw_idle()
+                    fig.canvas.flush_events()
+                    
+                    # Reset timer
+                    last_update_time = current_time
+                    
+            except queue.Empty:
+                # Update plot occasionally even when queue is empty
+                if time.time() - last_update_time > UPDATE_INTERVAL/1000:
+                    fig.canvas.draw_idle()
+                    fig.canvas.flush_events()
+                    last_update_time = time.time()
+                continue
+                
+    except KeyboardInterrupt:
+        print("Plot interrupted by user")
+    
+    finally:
+        print("plot_audio_with_fft stopped")
+        plt.ioff()
+        plt.close(fig)
+
+
+def record_and_plot_audio(output_queue, stop_event, filename=None):
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from scipy import signal
+    import queue
+    import time
+    import os
+    
+    # Handle the filename parameter correctly
+    if filename is None or not isinstance(filename, (str, bytes, os.PathLike)):
+        # Default filename if none provided or invalid type
+        filename = "recorded_audio.npy"
+    
+    # Parameters
+    RECORD_DURATION = 10  # seconds
+    SAMPLE_RATE = 16500   # Hz
+    
+    # For fixed-time recording approach
+    start_time = time.time()
+    end_time = start_time + RECORD_DURATION
+    
+    # Initialize buffer for audio collection
+    audio_buffer = []  # Start with a list for faster appends
+    
+    print(f"Starting audio recording for {RECORD_DURATION} seconds...")
+    print(f"Output will be saved to: {filename}")
+    last_update_time = start_time
+    
+    try:
+        # Record until time is up (fixed duration approach)
+        while time.time() < end_time and not stop_event.is_set():
+            try:
+                # Get audio data from queue with minimal timeout
+                audio_chunk = output_queue.get(timeout=0.001)
+                
+                # Append to our recording buffer (using list for efficiency)
+                audio_buffer.append(audio_chunk)
+                
+                # Mark as done immediately to avoid queue backup
+                output_queue.task_done()
+                
+                # Update display at intervals
+                current_time = time.time()
+                if current_time - last_update_time >= 0.5:  # Less frequent updates
+                    elapsed = current_time - start_time
+                    remaining = max(0, RECORD_DURATION - elapsed)
+                    
+                    # Estimate progress based on time rather than samples
+                    time_progress = min(100, (elapsed / RECORD_DURATION) * 100)
+                    
+                    print(f"\rRecording: {time_progress:.1f}% (time-based) | Elapsed: {elapsed:.1f}s | Remaining: {remaining:.1f}s | Chunks: {len(audio_buffer)}", end="")
+                    last_update_time = current_time
+                
+            except queue.Empty:
+                # Very short timeout and continue immediately
+                continue
+        
+        print("\nProcessing recorded audio...")
+        
+        # Convert list of arrays to a single flat array
+        if audio_buffer:
+            try:
+                # Handle different input array shapes
+                if isinstance(audio_buffer[0], np.ndarray) and audio_buffer[0].size > 1:
+                    # If chunks are arrays, concatenate them
+                    full_audio = np.concatenate(audio_buffer)
+                else:
+                    # If chunks are scalars or single-element arrays
+                    full_audio = np.array(audio_buffer).flatten()
+                
+                # Save to file
+                np.save(filename, full_audio)
+                
+                actual_duration = len(full_audio) / SAMPLE_RATE
+                print(f"Recording complete! Saved {len(full_audio)} samples ({actual_duration:.2f} seconds) to {filename}")
+                
+                # Simple analysis first
+                print("Generating basic visualization...")
+                
+                # Create a simpler figure (for speed)
+                plt.figure(figsize=(10, 6))
+                
+                # Plot time domain only first (faster)
+                time_axis = np.linspace(0, actual_duration, len(full_audio))
+                plt.plot(time_axis, full_audio, 'b-', linewidth=0.5)
+                plt.title(f'Recorded Audio Waveform ({actual_duration:.2f} seconds)')
+                plt.xlabel('Time (seconds)')
+                plt.ylabel('Amplitude')
+                plt.grid(True, alpha=0.3)
+                
+                plt.tight_layout()
+                plt.show(block=False)  # Non-blocking to continue processing
+                
+                print("Basic visualization complete. Generating detailed analysis...")
+                
+                # Create more detailed plots after showing the basic one
+                fig, (ax_time, ax_freq) = plt.subplots(2, 1, figsize=(12, 8))
+                
+                # Time domain
+                ax_time.plot(time_axis, full_audio, 'b-', linewidth=0.5)
+                ax_time.set_title(f'Recorded Audio Waveform ({actual_duration:.2f} seconds)')
+                ax_time.set_xlabel('Time (seconds)')
+                ax_time.set_ylabel('Amplitude')
+                ax_time.grid(True, alpha=0.3)
+                
+                # Compute the spectrogram with reduced complexity
+                # Use larger window size and less overlap for faster computation
+                f, t, Sxx = signal.spectrogram(full_audio, fs=SAMPLE_RATE, 
+                                              nperseg=2048, noverlap=512)
+                
+                # Plot spectrogram
+                spec = ax_freq.pcolormesh(t, f, 10 * np.log10(Sxx + 1e-10), 
+                                         shading='gouraud', cmap='viridis')
+                ax_freq.set_title('Spectrogram (Frequency vs Time)')
+                ax_freq.set_ylabel('Frequency (Hz)')
+                ax_freq.set_xlabel('Time (seconds)')
+                
+                fig.colorbar(spec, ax=ax_freq, label='Power Spectral Density (dB)')
+                
+                # Add bandpass region
+                LOWCUT, HIGHCUT = 7000.0, 8000.0
+                ax_freq.axhline(y=LOWCUT, color='r', linestyle='--', alpha=0.7)
+                ax_freq.axhline(y=HIGHCUT, color='r', linestyle='--', alpha=0.7)
+                
+                plt.tight_layout()
+                plt.show()
+                
+            except Exception as e:
+                print(f"Error processing audio data: {str(e)}")
+        else:
+            print("Warning: No audio data was captured!")
+            
+    except KeyboardInterrupt:
+        print("\nRecording interrupted by user")
+    
+    finally:
+        print("record_and_plot_audio function stopped")
+
 
 def timing_audio_buffered(input_queue, stop_event, buffer_size):
     #packet size = input("Packet size: ")
