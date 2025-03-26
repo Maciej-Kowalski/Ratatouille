@@ -16,16 +16,19 @@ from outputs import mouse_cursor_mapping_no_cal
 from outputs import plot_audio_buffered
 from outputs import no_output
 from outputs import print_continuous_audio
+from outputs import plot_continuous_audio
+from outputs import plot_audio_with_fft
+from outputs import record_and_plot_audio
 
 def audioBuff():
     try:
         serial_settings = {
-            "port": "COM16",
+            "port": "COM10",
             "baudrate": 115200,
             "timeout": 1
         }
         prototype = ClickMouseBuffered(serial_settings, filter=audio_bandpass_high_F_filter, output=print_continuous_audio)
-        #prototype = ClickMouseBuffered(serial_settings, filter=audio_bandpass_high_F_filter, output=plot_audio_buffered)
+        #prototype = ClickMouseBuffered(serial_settings, filter=audio_bandpass_high_F_filter, output=record_and_plot_audio)
         prototype.start()
     except Exception as e:
         print(e)
