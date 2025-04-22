@@ -27,11 +27,16 @@
 #include <stdint.h>
 #include <string.h>
 #include "usbd_cdc_if.h"
+
+// BMI270 libs
+#include "bmi160_wrapper.h"
+#include "BMI270_SensorAPI-master/bmi270.h"
+#include "BMI270_SensorAPI-master/common.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+BMI160_t imu_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -41,7 +46,13 @@
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+// BMI 270 Macros
+/*! Earth's gravity in m/s^2 */
+#define GRAVITY_EARTH  (9.80665f)
 
+/*! Macros to select the sensors                   */
+#define ACCEL          UINT8_C(0x00)
+#define GYRO           UINT8_C(0x01)
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -97,6 +108,12 @@ void task1_handler(void *argument);
 
 /* USER CODE BEGIN PFP */
 void USB_transmit(uint8_t *buffer, size_t length);
+
+/* IMU */
+static int8_t set_accel_gyro_config(struct bmi2_dev *bmi);
+static float lsb_to_mps2(int16_t val, float g_range, uint8_t bit_width);
+static float lsb_to_dps(int16_t val, float dps, uint8_t bit_width);
+/* IMU END */
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -496,6 +513,110 @@ void USB_transmit(uint8_t *buffer, size_t length){
 
 	}
 }
+
+/* BMI 270 Functions */
+static int8_t set_accel_gyro_config(struct bmi2_dev *bmi)
+{
+    /* Status of api are returned to this variable. */
+    int8_t rslt;
+
+    /* Structure to define accelerometer and gyro configuration. */
+    struct bmi2_sens_config config[2];
+
+    /* Configure the type of feature. */
+    config[ACCEL].type = BMI2_ACCEL;
+    config[GYRO].type = BMI2_GYRO;
+
+    /* Get default configurations for the type of feature selected. */
+    rslt = bmi270_set_sensor_config(config, 2, bmi);
+    bmi2_error_codes_print_result(rslt);
+
+    /* Map data ready interrupt to interrupt pin. */
+    rslt = bmi2_map_data_int(BMI2_DRDY_INT, BMI2_INT1, bmi);
+    bmi2_error_codes_print_result(rslt);
+
+    if (rslt == BMI2_OK)
+    {
+        /* NOTE: The user can change the following configuration parameters according to their requirement. */
+        /* Set Output Data Rate */
+        config[ACCEL].cfg.acc.odr = BMI2_ACC_ODR_800HZ;
+
+        /* Gravity range of the sensor (+/- 2G, 4G, 8G, 16G). */
+        config[ACCEL].cfg.acc.range = BMI2_ACC_RANGE_2G;
+
+        /* The bandwidth parameter is used to configure the number of sensor samples that are averaged
+         * if it is set to 2, then 2^(bandwidth parameter) samples
+         * are averaged, resulting in 4 averaged samples.
+         * Note1 : For more information, refer the datasheet.
+         * Note2 : A higher number of averaged samples will result in a lower noise level of the signal, but
+         * this has an adverse effect on the power consumed.
+         */
+        config[ACCEL].cfg.acc.bwp = BMI2_ACC_NORMAL_AVG4;
+
+        /* Enable the filter performance mode where averaging of samples
+         * will be done based on above set bandwidth and ODR.
+         * There are two modes
+         *  0 -> Ultra low power mode
+         *  1 -> High performance mode(Default)
+         * For more info refer datasheet.
+         */
+        config[ACCEL].cfg.acc.filter_perf = BMI2_PERF_OPT_MODE;
+
+        /* The user can change the following configuration parameters according to their requirement. */
+        /* Set Output Data Rate */
+        config[GYRO].cfg.gyr.odr = BMI2_GYR_ODR_800HZ;
+
+        /* Gyroscope Angular Rate Measurement Range.By default the range is 2000dps. */
+        config[GYRO].cfg.gyr.range = BMI2_GYR_RANGE_2000;
+
+        /* Gyroscope bandwidth parameters. By default the gyro bandwidth is in normal mode. */
+        config[GYRO].cfg.gyr.bwp = BMI2_GYR_NORMAL_MODE;
+
+        /* Enable/Disable the noise performance mode for precision yaw rate sensing
+         * There are two modes
+         *  0 -> Ultra low power mode(Default)
+         *  1 -> High performance mode
+         */
+        config[GYRO].cfg.gyr.noise_perf = BMI2_POWER_OPT_MODE;
+
+        /* Enable/Disable the filter performance mode where averaging of samples
+         * will be done based on above set bandwidth and ODR.
+         * There are two modes
+         *  0 -> Ultra low power mode
+         *  1 -> High performance mode(Default)
+         */
+        config[GYRO].cfg.gyr.filter_perf = BMI2_PERF_OPT_MODE;
+
+        /* Set the accel and gyro configurations. */
+        rslt = bmi270_set_sensor_config(config, 2, bmi);
+        bmi2_error_codes_print_result(rslt);
+    }
+
+    return rslt;
+}
+
+static float lsb_to_mps2(int16_t val, float g_range, uint8_t bit_width)
+{
+    double power = 2;
+
+    float half_scale = (float)((pow((double)power, (double)bit_width) / 2.0f));
+
+    return (GRAVITY_EARTH * val * g_range) / half_scale;
+}
+
+/*!
+ * @brief This function converts lsb to degree per second for 16 bit gyro at
+ * range 125, 250, 500, 1000 or 2000dps.
+ */
+static float lsb_to_dps(int16_t val, float dps, uint8_t bit_width)
+{
+    double power = 2;
+
+    float half_scale = (float)((pow((double)power, (double)bit_width) / 2.0f));
+
+    return (dps / (half_scale)) * (val);
+}
+/* BMI 270 Functions END */
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -511,6 +632,31 @@ void StartDefaultTask(void *argument)
   MX_USB_Device_Init();
   /* USER CODE BEGIN 5 */
   //RAVEN initiate sensor
+
+  /* IMU Variable Setup */
+  	int8_t rslt;
+  	uint8_t sensor_list[2] = { BMI2_ACCEL, BMI2_GYRO };
+  	struct bmi2_dev bmi; // MACIEJ transfer me to task1_handler
+  	struct bmi2_sens_data sensor_data = { { 0 } };
+  	struct bmi2_sens_config config;
+  /* IMU Variable Setup END */
+
+  while (BMI160_init(imu_t) == 1); // waits for IMU to be ready
+  rslt = bmi2_interface_init(&bmi, BMI2_I2C_INTF);
+  //bmi2_error_codes_print_result(rslt);
+  rslt = bmi270_init(&bmi);
+  //bmi2_error_codes_print_result(rslt);
+  rslt = set_accel_gyro_config(&bmi);
+  //bmi2_error_codes_print_result(rslt);
+  rslt = bmi2_sensor_enable(sensor_list, 2, &bmi);
+  //bmi2_error_codes_print_result(rslt);
+  config.type = BMI2_ACCEL;
+
+  if (imu_t.INIT_OK_i8 != TRUE){
+	  // Check if the BMI has not initiated properly: Print or turn LED on
+	  //printf("Stuck");
+	  //HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, SET);
+  }
   /* Infinite loop */
   for(;;)
   {
@@ -531,11 +677,34 @@ void task1_handler(void *argument)
   /* USER CODE BEGIN task1_handler */
 	uint8_t buffer[20];
 	//RAVEN set up variables - if there are things needed both for initiation and taking measurements, talk to me
+	/* IMU */
+	float IMU_reading[6] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f}; // GX, GY, GZ, AX, AY, AZ
+	/* IMU END */
   /* Infinite loop */
   for(;;)
   {
 	  osThreadFlagsWait(0x01, osFlagsWaitAny, osWaitForever);
 	  //RAVEN take measurement
+	  /* IMU Variable Setup */
+		int8_t rslt;
+		struct bmi2_dev bmi; // MACIEJ I must be transfered from StartDefaultTask
+		struct bmi2_sens_data sensor_data = { { 0 } };
+	  /* IMU Variable Setup END */
+
+	  bmi160ReadAccelGyro(&imu_t);
+	  rslt = bmi2_get_sensor_data(&sensor_data, &bmi);
+	  bmi2_error_codes_print_result(rslt);
+
+	  /* Converting lsb to meter per second squared for 16 bit accelerometer at 2G range. */
+	  IMU_reading[5] = lsb_to_mps2(sensor_data.acc.x, (float)2, bmi.resolution);
+	  IMU_reading[6] = lsb_to_mps2(sensor_data.acc.y, (float)2, bmi.resolution);
+	  IMU_reading[4] = lsb_to_mps2(sensor_data.acc.z, (float)2, bmi.resolution);
+
+	  /* Converting lsb to degree per second for 16 bit gyro at 2000dps range. */
+	  IMU_reading[1] = lsb_to_dps(sensor_data.gyr.x, (float)2000, bmi.resolution)*0.0174533;
+	  IMU_reading[2] = lsb_to_dps(sensor_data.gyr.y, (float)2000, bmi.resolution)*0.0174533;
+	  IMU_reading[0] = lsb_to_dps(sensor_data.gyr.z, (float)2000, bmi.resolution)*0.0174533;
+
 	  sprintf((char*)buffer,"%d\r\n",IMU_reading);
 	  USB_transmit(buffer, sizeof(buffer));
 
