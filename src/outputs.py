@@ -636,7 +636,6 @@ def record_and_plot_audio(output_queue, stop_event, filename=None):
 
 
 def timing_audio_buffered(input_queue, stop_event, buffer_size):
-    frequency = input("Frequency: ")
     t_start = time.perf_counter()
     t_last_packet = t_start
     raw_data = []  # Array to store all raw data points
@@ -677,6 +676,8 @@ def timing_audio_buffered(input_queue, stop_event, buffer_size):
             input_queue.task_done()
         except queue.Empty:
             continue
+
+    frequency = input("Frequency: ")
 
     # Calculate statistics
     if len(time_differences) > 0:

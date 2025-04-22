@@ -23,11 +23,24 @@ from outputs import record_and_plot_audio
 def audioBuff():
     try:
         serial_settings = {
-            "port": "COM10",
+            "port": "COM9",
             "baudrate": 115200,
             "timeout": 1
         }
-        prototype = ClickMouseBuffered(serial_settings, filter=audio_bandpass_high_F_filter, output=print_continuous_audio)
+        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_continuous_audio)
+        #prototype = ClickMouseBuffered(serial_settings, filter=audio_bandpass_high_F_filter, output=record_and_plot_audio)
+        prototype.start()
+    except Exception as e:
+        print(e)
+
+def audioBufftiming():
+    try:
+        serial_settings = {
+            "port": "COM19",
+            "baudrate": 115200,
+            "timeout": 1
+        }
+        prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=timing_audio_buffered)
         #prototype = ClickMouseBuffered(serial_settings, filter=audio_bandpass_high_F_filter, output=record_and_plot_audio)
         prototype.start()
     except Exception as e:
