@@ -280,20 +280,24 @@ int main(void)
 //		  prepare_data_packet_IMU(g_f32,a_f32,USB_buffer,&packet_length);
 //		  CDC_Transmit_FS(USB_buffer, packet_length);
 //		  BSP_LED_Toggle(LED_GREEN);
-//		  //HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
-//		  //snprintf(msg, sizeof(msg), "a: %.2f, g: %.2f", a_f32[0], g_f32[0]);
-//		  //CDC_Transmit_FS((uint8_t *)msg, strlen(msg));
+		  //HAL_GPIO_TogglePin(LD2_GPIO_Port,LD2_Pin);
+		  //snprintf(msg, sizeof(msg), "a: %.2f, g: %.2f", a_f32[0], g_f32[0]);
+		  //CDC_Transmit_FS((uint8_t *)msg, strlen(msg));
 
 		  // BMI270
 		  /* Converting lsb to meter per second squared for 16 bit accelerometer at 2G range. */
-		  acc_x = lsb_to_mps2(sensor_data.acc.x, (float)2, bmi.resolution);
-		  acc_y = lsb_to_mps2(sensor_data.acc.y, (float)2, bmi.resolution);
-		  acc_z = lsb_to_mps2(sensor_data.acc.z, (float)2, bmi.resolution);
+		  a_f32[1] = lsb_to_mps2(sensor_data.acc.x, (float)2, bmi.resolution);
+		  a_f32[2] = lsb_to_mps2(sensor_data.acc.y, (float)2, bmi.resolution);
+		  a_f32[0] = lsb_to_mps2(sensor_data.acc.z, (float)2, bmi.resolution);
 
 		  /* Converting lsb to degree per second for 16 bit gyro at 2000dps range. */
-		  gyr_x = lsb_to_dps(sensor_data.gyr.x, (float)2000, bmi.resolution);
-		  gyr_y = lsb_to_dps(sensor_data.gyr.y, (float)2000, bmi.resolution);
-		  gyr_z = lsb_to_dps(sensor_data.gyr.z, (float)2000, bmi.resolution);
+		  g_f32[1] = lsb_to_dps(sensor_data.gyr.x, (float)2000, bmi.resolution)*0.0174533;
+		  g_f32[2] = lsb_to_dps(sensor_data.gyr.y, (float)2000, bmi.resolution)*0.0174533;
+		  g_f32[0] = lsb_to_dps(sensor_data.gyr.z, (float)2000, bmi.resolution)*0.0174533;
+
+		  prepare_data_packet_IMU(g_f32,a_f32,USB_buffer,&packet_length);
+		  		  CDC_Transmit_FS(USB_buffer, packet_length);
+		  		  BSP_LED_Toggle(LED_GREEN);
 //
 //		  printf("%4.2f, %4.2f, %4.2f, %4.2f, %4.2f, %4.2f\r\n",
 //				 acc_x,
@@ -302,9 +306,9 @@ int main(void)
 //				 gyr_x,
 //				 gyr_y,
 //				 gyr_z);
-
-		  countertemp++;
-		  printf("%d\r\n",countertemp);
+//
+//		  countertemp++;
+//		  printf("%d\r\n",countertemp);
 
 
 		  flag = 0;
@@ -684,7 +688,7 @@ static int8_t set_accel_gyro_config(struct bmi2_dev *bmi)
     {
         /* NOTE: The user can change the following configuration parameters according to their requirement. */
         /* Set Output Data Rate */
-        config[ACCEL].cfg.acc.odr = BMI2_ACC_ODR_400HZ;
+        config[ACCEL].cfg.acc.odr = BMI2_ACC_ODR_800HZ;
 
         /* Gravity range of the sensor (+/- 2G, 4G, 8G, 16G). */
         config[ACCEL].cfg.acc.range = BMI2_ACC_RANGE_2G;
