@@ -463,7 +463,7 @@ def TREK_filter(input_queue, output_queue, stop_event):
     # b, a = signal.ellip(3, 0.1, 100, 1.5, fs=100) # 3rd order, cut-off
 
     # b, a = signal.ellip(3, 0.1, 50, [2.3,12], btype='bandstop', fs=100) # bandstop
-    b, a = signal.ellip(3, 0.1, 60, [2.5,14], btype='bandstop', fs=100) # bandstop
+    b, a = signal.ellip(3, 0.1, 60, [1.7,22], btype='bandstop', fs=100) # bandstop
 
     from scipy.signal import bode
     #w, mag, phase = bode(b,a)
@@ -478,9 +478,9 @@ def TREK_filter(input_queue, output_queue, stop_event):
             acc_prev = np.array([acc_prev],dtype="float")
             Qold = acc2q(acc_prev) # Get the first quaternion state array by converting accelerometer data into a quaternion
             Qoldek = Qold # For standard EKF
-            #ekf = EKF(frequency=17.3,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # EKF init from old code 0.6**2
-            rekf = rek.OREKF(frequency=95,frame='ENU',q0=Qold,noises=[0.15**4, 0.15**4, 0.8**2]) # Initialise EKF function. Noise = [Process covariance, Measurement covariance]
-            ekf = EKF(frequency=95,frame='ENU',q0=Qold,noises=[0.15**4, 0.15**4, 0.8**2])
+            #ekf = EKF(frequency=17.3,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # EKF init from old code 0.6**2 // Was 0.1, 0.15 before \/
+            rekf = rek.OREKF(frequency=95,frame='ENU',q0=Qold,noises=[2.5**4, 2.6**4, 0.8**2]) # Initialise EKF function. Noise = [Process covariance, Measurement covariance]
+            ekf = EKF(frequency=95,frame='ENU',q0=Qold,noises=[2.5**4, 2.6**4, 0.8**2])
             init_angles = q2rpy(Qold)*r2d
             smooth_roll_prev = init_angles[0]
             smooth_pitch_prev = init_angles[1]
@@ -646,7 +646,7 @@ def TREK_filter(input_queue, output_queue, stop_event):
             ekfangles = q2rpy(Qnewek)*r2d # Get euler angles from quaternions
             ##### EKF angles end #####            
 
-            fields=[angles[0],angles[1],angles[2],filangles[0],filangles[1],filangles[2],ekfangles[0],ekfangles[1],ekfangles[2]]
+            # fields=[angles[0],angles[1],angles[2],filangles[0],filangles[1],filangles[2],ekfangles[0],ekfangles[1],ekfangles[2]]
             # with open(r'TREKfoo.csv', 'a') as f:
             #         writer = csv.writer(f)
             #         writer.writerow(fields)

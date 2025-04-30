@@ -5,6 +5,7 @@ from serial_pipeline import FusionMouse
 from filters import no_filter
 from filters import complementary_filter
 from filters import EK_filter
+from filters import TREK_filter
 from filters import audio_bandpass_high_F_filter
 from outputs import print_counter_audio
 from outputs import print_counter_audio_buffered
@@ -75,12 +76,13 @@ def IMU():
 def Fusion():
     try:
         serial_settings = {
-            "port": "COM16",
+            "port": "COM3",
             "baudrate": 115200,
             "timeout": 1
         }
-        prototype = FusionMouse(serial_settings, audio_filter=no_filter, audio_output=print_counter_audio_buffered, IMU_filter=no_filter, IMU_output=print_raw_IMU)
-        #prototype = CursorMouse(serial_settings, filter=EK_filter, output=print_EK_filter_IMU)
+        # prototype = FusionMouse(serial_settings, audio_filter=no_filter, audio_output=print_counter_audio_buffered, IMU_filter=no_filter, IMU_output=print_raw_IMU)
+        prototype = FusionMouse(serial_settings, audio_filter=no_filter, audio_output=print_counter_audio_buffered, IMU_filter=TREK_filter, IMU_output=mouse_cursor_mapping)
+        # prototype = CursorMouse(serial_settings, filter=TREK_filter, output=print_EK_filter_IMU)
         prototype.start()
     except Exception as e:
         print(e)
