@@ -1,6 +1,7 @@
 from serial_pipeline import CursorMouse
 from serial_pipeline import ClickMouse
 from serial_pipeline import ClickMouseBuffered
+from serial_pipeline import FusionMouse
 from filters import no_filter
 from filters import complementary_filter
 from filters import EK_filter
@@ -71,5 +72,18 @@ def IMU():
     except Exception as e:
         print(e)
 
-print("test")
-audioBuff()
+def Fusion():
+    try:
+        serial_settings = {
+            "port": "COM16",
+            "baudrate": 115200,
+            "timeout": 1
+        }
+        prototype = FusionMouse(serial_settings, audio_filter=no_filter, audio_output=print_counter_audio_buffered, IMU_filter=no_filter, IMU_output=print_raw_IMU)
+        #prototype = CursorMouse(serial_settings, filter=EK_filter, output=print_EK_filter_IMU)
+        prototype.start()
+    except Exception as e:
+        print(e)
+
+print("Start")
+Fusion()
