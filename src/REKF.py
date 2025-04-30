@@ -873,7 +873,7 @@ from ahrs.common.mathfuncs import cosd
 from ahrs.common.mathfuncs import sind
 from ahrs.common.mathfuncs import skew
 
-import control as ct
+#import control as ct
 import math
 
 # from ahrs.utils.core import _assert_numerical_iterable
@@ -1445,7 +1445,7 @@ class OREKF:
         MD.append(math.sqrt((v[2]*v[2])/S[2,2])) 
         #print(MD)
         MDw = []
-        zeta = 8
+        zeta = 0.6
         MDw.append(1/(1+math.exp(-MD[0] + zeta)))
         MDw.append(1/(1+math.exp(-MD[1] + zeta)))
         MDw.append(1/(1+math.exp(-MD[2] + zeta)))
@@ -1466,10 +1466,11 @@ class OREKF:
         #     K = -K
         self.P = (np.identity(4) - K@H)@P_t     # Updated Covariance Matrix
         #self.P = P_t - (K@S@K.T)     # Updated Covariance Matrix
-        sat1  = ct.saturation_nonlinearity(0.15,-1)  # Standard scalar symmetric saturation function
-        sat2  = ct.saturation_nonlinearity(0.15,-1)
-        sat3  = ct.saturation_nonlinearity(0.15,-1)
-        vs = [sat1(v[0]),sat2(v[1]),sat3(v[2])] #
+        
+        # sat1  = ct.saturation_nonlinearity(0.15,-0.15)  # Standard scalar symmetric saturation function
+        # sat2  = ct.saturation_nonlinearity(0.15,-0.15)
+        # sat3  = ct.saturation_nonlinearity(0.15,-0.15)
+        # vs = [sat1(v[0]),sat2(v[1]),sat3(v[2])] #
 
         # lb < 0, gam > 0
         # sigd = lb1*sig + gam1*eps*math.exp(-eps)
@@ -1479,7 +1480,11 @@ class OREKF:
         #print(f"rol1: {vs[0]:8.4f}, pitc1: {vs[1]:8.4f}, ya1: {vs[2]:8.4f}")
         #print(vs)
         #print(sat3(v[2])
-        self.q = q_t + K@v                        # Corrected State with standard scalar symmetric saturation function
+
+        self.q = q_t + K@v
+        #self.q = q_t + K@vs                        # Corrected State with standard scalar symmetric saturation function
+
+
         # if( (MD[0]*MD[0]) > zeta or (MD[1]*MD[1] > zeta) or (MD[2]*MD[2] > zeta) ):
         #     print("sat")
             #self.q = q_t + 1*(K@v)

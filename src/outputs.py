@@ -7,6 +7,10 @@ from screeninfo import get_monitors
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
+import csv
+import os
+
+
 def no_output(input_queue, stop_event, _):
     while not stop_event.is_set():
         try:
@@ -637,50 +641,100 @@ def record_and_plot_audio(output_queue, stop_event, filename=None):
 
 
 def timing_audio_buffered(input_queue, stop_event, buffer_size):
-    #packet size = input("Packet size: ")
-    #frequency = input("Frequency: ")
-    first_value = 0
-    last_value = 0
     t_start = time.perf_counter()
     t_last_packet = t_start
-    data = []  # Array to store results
-    first_packet_received = False
+    raw_data = []  # Array to store all raw data points
+    time_differences = []
     packets_received = 0
+    first_packet_first_element = None
+    hundredth_packet_last_element = None
+    sample_counter = 0  # Counter for continuous sample numbering
 
-    while not stop_event.is_set():
+    while not stop_event.is_set() and packets_received < 100:
         try:
-            audio = input_queue.get(timeout=0.1)  # Use timeout to prevent hanging
-            if not first_packet_received:
-                first_packet_received = True
-                t_start = time.perf_counter()  # Start the 10-second timer
-                first_value = audio[0]
-
+            audio = input_queue.get(timeout=0.1)  # Get audio packet
             packets_received += 1
-            counter += 1 * buffer_size
+            
+            # Record timing information
             t_now = time.perf_counter()
-            time_elapsed = t_now - t_last_packet
-            queue_length = input_queue.qsize()
-
-            # Store data in the array
-            data.append([counter, audio[0], audio[-1], time_elapsed, queue_length])
-
+            if packets_received == 1:
+                first_packet_first_element = audio[0]
+                t_start = t_now
+            if packets_received == 100:
+                hundredth_packet_last_element = audio[-1]
+            
+            if packets_received > 1:
+                time_elapsed = t_now - t_last_packet
+                time_differences.append(time_elapsed)
+            
+            # Store ALL data points from the packet with continuous numbering
+            for i, sample in enumerate(audio):
+                raw_data.append([
+                    sample_counter + i,  # Continuous sample number
+                    sample,             # Sample value
+                    packets_received,   # Packet number
+                    t_now - t_start     # Time since start
+                ])
+            
+            sample_counter += len(audio)
             t_last_packet = t_now
-
-            # Check if 10 seconds have passed since the first packet
-            if packets_received >= 100:
-                break
-
             input_queue.task_done()
         except queue.Empty:
             continue
 
-    # Save data to a CSV file
-    with open("audio_data_3200.csv", "w", newline="") as csvfile:
-        csv_writer = csv.writer(csvfile)
-        csv_writer.writerow(["Counter", "First Element", "Last Element", "Time Elapsed", "Queue Size"])  # Header
-        csv_writer.writerows(data)  # Write all rows
+    frequency = input("Frequency: ")
 
-    print("Done")
+    # Calculate statistics
+    if len(time_differences) > 0:
+        time_array = np.array(time_differences)
+        mean_time = np.mean(time_array)
+        std_time = np.std(time_array)
+        min_time = np.min(time_array)
+        max_time = np.max(time_array)
+        percentile_10 = np.percentile(time_array, 10)
+        percentile_90 = np.percentile(time_array, 90)
+    else:
+        mean_time = std_time = min_time = max_time = percentile_10 = percentile_90 = 0
+
+    # Write summary data to timing_data.csv (append mode)
+    summary_data = [
+        frequency,
+        buffer_size,
+        first_packet_first_element,
+        hundredth_packet_last_element,
+        mean_time,
+        std_time,
+        min_time,
+        percentile_10,
+        percentile_90,
+        max_time
+    ]
+    
+    # Write summary data (append to file)
+    file_exists = os.path.isfile('timing_data.csv')
+    with open("timing_data.csv", "a", newline="") as csvfile:
+        csv_writer = csv.writer(csvfile)
+        if not file_exists:
+            csv_writer.writerow([
+                "Frequency", "Buffer Size", "First Element (1st packet)", 
+                "Last Element (100th packet)", "Mean Time", "Std Dev Time", 
+                "Min Time", "10th Percentile", "90th Percentile", "Max Time"
+            ])
+        csv_writer.writerow(summary_data)
+
+    # Write ALL raw data points to separate file
+    raw_filename = f"raw_data_{frequency}_{buffer_size}.csv"
+    with open(raw_filename, "w", newline="") as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow([
+            "Sample Number", 
+            "Sample Value", 
+            "Packet Number", 
+            "Time Since Start (s)"
+        ])
+        csv_writer.writerows(raw_data)
+
+    print(f"Data collection complete. Saved {len(raw_data)} samples.")
 
 def test_monitors():
     m = get_monitors()

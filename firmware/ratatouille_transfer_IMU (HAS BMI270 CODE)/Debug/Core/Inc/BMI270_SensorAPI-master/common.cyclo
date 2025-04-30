@@ -1,0 +1,5 @@
+../Core/Inc/BMI270_SensorAPI-master/common.c:42:23:bmi2_i2c_read	1
+../Core/Inc/BMI270_SensorAPI-master/common.c:53:23:bmi2_i2c_write	1
+../Core/Inc/BMI270_SensorAPI-master/common.c:64:6:bmi2_delay_us	1
+../Core/Inc/BMI270_SensorAPI-master/common.c:72:8:bmi2_interface_init	3
+../Core/Inc/BMI270_SensorAPI-master/common.c:162:6:bmi2_error_codes_print_result	34

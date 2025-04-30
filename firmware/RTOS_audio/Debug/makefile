@@ -1,6 +1,6 @@
 ################################################################################
 # Automatically-generated file. Do not edit!
-# Toolchain: GNU Tools for STM32 (12.3.rel1)
+# Toolchain: GNU Tools for STM32 (13.3.rel1)
 ################################################################################
 
 -include ../makefile.init
@@ -68,8 +68,8 @@ all: main-build
 main-build: RTOS_audio.elf secondary-outputs
 
 # Tool invocations
-RTOS_audio.elf RTOS_audio.map: $(OBJS) $(USER_OBJS) C:\Users\joham\STM32CubeIDE\workspace_1.16.1\RTOS_audio\STM32WB55RGVX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "RTOS_audio.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\STM32CubeIDE\workspace_1.16.1\RTOS_audio\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="RTOS_audio.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+RTOS_audio.elf RTOS_audio.map: $(OBJS) $(USER_OBJS) C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\RTOS_audio\STM32WB55RGVX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "RTOS_audio.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\RTOS_audio\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="RTOS_audio.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

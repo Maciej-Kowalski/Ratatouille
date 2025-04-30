@@ -1236,10 +1236,11 @@ def REK_filter(input_queue, output_queue, stop_event):
 def TREK_filter(input_queue, output_queue, stop_event):
     print("trek_filter run")
     ##### Setup your variables and flags str #####
-    gyr_alpha = 0.05
-    acc_alpha = 0.005
+    gyr_alpha = 0.00 # 0.05
+    acc_alpha = 0.000 # 0.005
     salpha = 0.00 # Originally 0.65, 0.75 for demo
     flg = 0
+    longcounter = 0 # Counter to add data into csv
     
     gyr_prev = []
     acc_prev = []
@@ -1248,10 +1249,12 @@ def TREK_filter(input_queue, output_queue, stop_event):
 
     Qold = np.zeros((1, 4))
     Qnew = np.zeros((1, 4))
+    Qoldek = np.zeros((1, 4))
+    Qnewek = np.zeros((1, 4))
     r2d = 57.2958
 
     maxavg = 50 # Max array size. Essential tremors 4-8Hz
-    movingavg = np.array([[5]*3]*maxavg) # Array for moving average 
+    movingavg = np.zeros((maxavg,3)) # Array for moving average 
     pointer = 0
 
     ##### Setup your variables and flags end #####
@@ -1265,7 +1268,7 @@ def TREK_filter(input_queue, output_queue, stop_event):
     # b, a = signal.ellip(3, 0.1, 100, 1.5, fs=100) # 3rd order, cut-off
 
     # b, a = signal.ellip(3, 0.1, 50, [2.3,12], btype='bandstop', fs=100) # bandstop
-    b, a = signal.ellip(3, 0.1, 60, [1.2,14], btype='bandstop', fs=100) # bandstop
+    b, a = signal.ellip(3, 0.1, 60, [2.5,14], btype='bandstop', fs=100) # bandstop
 
     from scipy.signal import bode
     #w, mag, phase = bode(b,a)
@@ -1279,8 +1282,10 @@ def TREK_filter(input_queue, output_queue, stop_event):
             gyr_prev = np.array([gyr_prev],dtype="float")
             acc_prev = np.array([acc_prev],dtype="float")
             Qold = acc2q(acc_prev) # Get the first quaternion state array by converting accelerometer data into a quaternion
+            Qoldek = Qold # For standard EKF
             #ekf = EKF(frequency=17.3,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # EKF init from old code 0.6**2
-            rekf = rek.OREKF(frequency=95,frame='ENU',q0=Qold,noises=[0.1**2, 0.15**4, 0.8**2]) # Initialise EKF function. Noise = [Process covariance, Measurement covariance]
+            rekf = rek.OREKF(frequency=95,frame='ENU',q0=Qold,noises=[0.15**4, 0.15**4, 0.8**2]) # Initialise EKF function. Noise = [Process covariance, Measurement covariance]
+            ekf = EKF(frequency=95,frame='ENU',q0=Qold,noises=[0.15**4, 0.15**4, 0.8**2])
             init_angles = q2rpy(Qold)*r2d
             smooth_roll_prev = init_angles[0]
             smooth_pitch_prev = init_angles[1]
@@ -1295,9 +1300,9 @@ def TREK_filter(input_queue, output_queue, stop_event):
 
     while not stop_event.is_set():
         try:
-            gyro, acc = input_queue.get(timeout = 0.01)
-            gyro = np.array([gyro],dtype="float")
-            acc = np.array([acc],dtype="float")
+            gyroraw, accraw = input_queue.get(timeout = 0.01)
+            gyro = np.array([gyroraw],dtype="float")
+            acc = np.array([accraw],dtype="float")
             accavg = math.sqrt( (acc[0,0]*acc[0,0]) + (acc[0,1]*acc[0,1]) + (acc[0,2]*acc[0,2]) )
             #print(accavg)
             import control as ct
@@ -1341,11 +1346,19 @@ def TREK_filter(input_queue, output_queue, stop_event):
             # Theory: Push incoming gyro data into an array. Find the gradient of change. If change < threshold, set gyro = 0. If change > 0, gyro unaffected.
 
             movingavg[pointer] = gyro
-            gyrochange = movingavg.max(axis=0,dtype=np.float64) - movingavg.min(axis=0,dtype=np.float64)
+            gyrochange = movingavg.max(axis=0) - movingavg.min(axis=0)
+            #print(gyrochange)
             
+            # if(any(i < 1 for i in gyrochange) == True): # Go through gyro XYZ and check if change < 1 degree 
+            #     gyro = np.full((3, 1), 0)
+            #     print("Stationary! Let's stop drifting...")
 
-            if( sum(n > 1 for n in gyrochange) > 0):
-                gyro = np.full((3, 1), 0)
+            drifti = np.argwhere(gyrochange < 0.05)
+            if drifti.size != 0:
+                for x in np.nditer(drifti):
+                    gyro[0,x] = 0
+            # print("stationary")
+            # print(gyro)
 
             pointer = pointer+1
             if(pointer>=maxavg):
@@ -1358,8 +1371,10 @@ def TREK_filter(input_queue, output_queue, stop_event):
             #     print("sat")
             # else:
             #     Qnew = rekf.rupdate(Qold, gyr_cur[0], acc_cur[0])
-            Qnew = rekf.rupdate(Qold, gyr_cur[0], acc_cur[0]) # Update EKF function. See: https://github.com/Mayitzin/ahrs/blob/master/ahrs/filters/ekf.py#L1336
+            Qnew = rekf.rupdate(Qold, gyro[0], acc_cur[0]) # Update EKF function. See: https://github.com/Mayitzin/ahrs/blob/master/ahrs/filters/ekf.py#L1336
             Qold = Qnew
+            Qnewek = ekf.update(Qoldek, gyr_cur[0], acc_cur[0])
+            Qoldek = Qnewek
 
             angles = q2rpy(Qnew)*r2d # Get euler angles from quaternions 
             roll = angles[0]
@@ -1395,8 +1410,8 @@ def TREK_filter(input_queue, output_queue, stop_event):
 
             #print(angles)
             filangles[0], zr  = signal.lfilter(b, a, [roll], zi=zr)
-            filangles[1], zp = signal.lfilter(b, a, [pitch], zi=zp)
-            filangles[2], zy   = signal.lfilter(b, a, [yaw], zi=zy)
+            filangles[1], zp  = signal.lfilter(b, a, [pitch], zi=zp)
+            filangles[2], zy  = signal.lfilter(b, a, [yaw], zi=zy)
             #print(filroll.tolist())
             #print(type(filroll) is np.ndarray)
             ##### End low-pass filtering #####
@@ -1430,13 +1445,25 @@ def TREK_filter(input_queue, output_queue, stop_event):
             ##########
             
             # print(f"Q: {[f'{(100*x):8.2f}' for x in Qold]}, E: {[f'{(100*x):8.2f}' for x in angles]}") # Print quat and euler output of update
-            ##### REKF update end #####            
+            ##### REKF update end #####
 
-            fields=[angles[0],angles[1],angles[2],filangles[0],filangles[1],filangles[2]]
-            with open(r'TREKfoo.csv', 'a') as f:
-                writer = csv.writer(f)
-                writer.writerow(fields)
+            ##### EKF angles str #####
+            ekfangles = q2rpy(Qnewek)*r2d # Get euler angles from quaternions
+            ##### EKF angles end #####            
 
+            fields=[angles[0],angles[1],angles[2],filangles[0],filangles[1],filangles[2],ekfangles[0],ekfangles[1],ekfangles[2]]
+            # with open(r'TREKfoo.csv', 'a') as f:
+            #         writer = csv.writer(f)
+            #         writer.writerow(fields)
+
+            # longcounter = longcounter + 1
+            # if(longcounter >= 95):
+            #     with open(r'TREKfoo.csv', 'a') as f:
+            #         writer = csv.writer(f)
+            #         writer.writerow(fields)
+            #     longcounter = 0
+
+            #output_queue.put((angles[0],angles[1],angles[2]))
             output_queue.put((filangles[0],filangles[1],filangles[2]))
             #output_queue.put((filroll, filpitch, filyaw))
             input_queue.task_done()
