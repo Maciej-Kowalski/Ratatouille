@@ -87,7 +87,7 @@ def Fusion():
             "timeout": 1
         }
         # prototype = FusionMouse(serial_settings, audio_filter=no_filter, audio_output=print_counter_audio_buffered, IMU_filter=no_filter, IMU_output=print_raw_IMU)
-        prototype = FusionMouse(serial_settings, audio_filter=no_filter, audio_output=print_counter_audio_buffered, IMU_filter=TREK_filter, IMU_output=mouse_cursor_mapping)
+        prototype = FusionMouse(serial_settings, audio_filter=audio_bandpass_high_F_filter_durations3, audio_output=print_counter_audio_buffered, IMU_filter=TREK_filter, IMU_output=mouse_cursor_mapping)
         # prototype = CursorMouse(serial_settings, filter=TREK_filter, output=print_EK_filter_IMU)
         prototype.start()
     except Exception as e:
