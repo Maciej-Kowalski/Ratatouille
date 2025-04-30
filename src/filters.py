@@ -15,7 +15,11 @@ import csv
 import REKF as rek
 from scipy import signal
 ##### EKF libraries end #####
-from scipy.signal import butter, filtfilt
+from scipy.signal import butter, filtfilt, lfilter
+from pynput.mouse import Button, Controller
+import sounddevice as sd
+import soundfile as sf
+import threading
 
 
 #the most up-to-date pipeline structure
@@ -31,8 +35,6 @@ def no_filter(input_queue, output_queue, stop_event):
     print("no_filter_stopped")
 
 def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
-    from pynput.mouse import Button, Controller
-    
     # Parameters (same as in your example)
     SAMPLE_RATE = 16500  # Sampling rate (Hz)
     LOWCUT = 7000.0      # Low-frequency cutoff (Hz)
@@ -41,15 +43,15 @@ def audio_bandpass_high_F_filter(input_queue, output_queue, stop_event):
     
     # Sliding-window click detection parameters
     WINDOW_DURATION = 0.05  # Length of the window (seconds)
-    POSITIVE_THRESHOLD = 800  # Must go above this
+    POSITIVE_THRESHOLD = 500  # Must go above this
     NEGATIVE_THRESHOLD = -POSITIVE_THRESHOLD  # Must go below this
-    COUNT_THRESHOLD = 3  # Number of threshold crossings needed in window
+    COUNT_THRESHOLD = 10  # Number of threshold crossings needed in window
     WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
     
     # Cooldown variables
     click_count = 0
     last_click_time = 0.0
-    click_cooldown = 0.25  # seconds to wait before next click
+    click_cooldown = 0.40  # seconds to wait before next click
     
     # Pre-compute filter coefficients
     nyquist = 0.5 * SAMPLE_RATE
@@ -270,6 +272,809 @@ def EK_filter(input_queue, output_queue, stop_event):
         except queue.Empty:
             continue
     print("EKF_stopped")
+
+def audio_bandpass_high_F_filter_mean(input_queue, output_queue, stop_event, sound_file="click_sound.wav"):
+    import sounddevice as sd
+    import soundfile as sf
+    import threading
+    
+    # Parameters
+    SAMPLE_RATE = 16500  # Sampling rate (Hz)
+    LOWCUT = 7000.0      # Low-frequency cutoff (Hz)
+    HIGHCUT = 8000.0     # High-frequency cutoff (Hz)
+    FILTER_ORDER = 5
+    
+    # Simplified detection parameters
+    WINDOW_DURATION = 0.05  # Length of the window (seconds)
+    MEAN_THRESHOLD = 300    # Mean of absolute values must exceed this
+    WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
+    
+    # Cooldown variables
+    click_count = 0
+    last_click_time = 0.0
+    click_cooldown = 0.40  # seconds to wait before next click
+    
+    # Pre-compute filter coefficients
+    nyquist = 0.5 * SAMPLE_RATE
+    low = LOWCUT / nyquist
+    high = HIGHCUT / nyquist
+    b, a = butter(FILTER_ORDER, [low, high], btype='band')
+    
+    # Smaller buffer for lower latency
+    buffer_duration = 0.1  # Reduced from 0.5 seconds for lower latency
+    buffer_size = int(buffer_duration * SAMPLE_RATE)
+    context_buffer = np.zeros(buffer_size)
+    
+    # Load the sound file to play on click detection
+    try:
+        click_sound_data, click_sound_samplerate = sf.read(sound_file)
+        print(f"Loaded sound file: {sound_file}")
+    except Exception as e:
+        print(f"Warning: Could not load sound file ({e}). Will use default click.")
+        click_sound_data = None
+    
+    # Function to play sound in a separate thread
+    def play_sound():
+        try:
+            if click_sound_data is not None:
+                sd.play(click_sound_data, click_sound_samplerate)
+            else:
+                # Generate a simple beep if no sound file is available
+                beep_duration = 0.1  # seconds
+                beep_freq = 1000  # Hz
+                t = np.linspace(0, beep_duration, int(beep_duration * 44100), False)
+                beep = 0.5 * np.sin(2 * np.pi * beep_freq * t)
+                sd.play(beep, 44100)
+        except Exception as e:
+            print(f"Error playing sound: {e}")
+    
+    # Simplified detection function using mean instead of threshold crossings
+    def detect_click_mean_threshold(signal):
+        """
+        Check if the mean of absolute values in the window exceeds the threshold.
+        """
+        if len(signal) < WINDOW_SIZE:
+            window = signal
+        else:
+            window = signal[-WINDOW_SIZE:]
+        
+        # Calculate mean of absolute values
+        mean_abs = np.mean(np.abs(window))
+        
+        # Return True if mean exceeds threshold
+        return mean_abs > MEAN_THRESHOLD
+    
+    # Mouse click function
+    def left_click():
+        mouse = Controller()
+        mouse.click(Button.left, 1)
+        
+        # Play sound in a separate thread to avoid blocking
+        sound_thread = threading.Thread(target=play_sound)
+        sound_thread.daemon = True
+        sound_thread.start()
+    
+    # Initialize filter state for lfilter
+    zi = np.zeros(max(len(a), len(b)) - 1)
+    
+    print(f"Audio click detection active with mean threshold: {MEAN_THRESHOLD}")
+    print("Listening for high-frequency sounds (7-8 kHz)...")
+    
+    while not stop_event.is_set():
+        try:
+            # Get audio data from input queue with minimal timeout
+            try:
+                task = input_queue.get(timeout=0.005)  # Reduced timeout
+            except queue.Empty:
+                continue
+            
+            if isinstance(task, np.ndarray):
+                # Apply bandpass filter with persistent state for efficiency
+                filtered_audio, zi = lfilter(b, a, task, zi=zi)
+                
+                # Update the context buffer with new filtered data
+                if len(filtered_audio) < buffer_size:
+                    # Shift buffer and add new data
+                    context_buffer = np.roll(context_buffer, -len(filtered_audio))
+                    context_buffer[-len(filtered_audio):] = filtered_audio
+                else:
+                    # If new data is larger than buffer, just use the newest portion
+                    context_buffer = filtered_audio[-buffer_size:]
+                
+                # Check for click using the mean threshold approach
+                now = time.time()
+                mean_abs_value = np.mean(np.abs(context_buffer))
+                
+                if mean_abs_value > MEAN_THRESHOLD:
+                    # Only register a new click if cooldown has passed
+                    if now - last_click_time > click_cooldown:
+                        click_count += 1
+                        last_click_time = now
+                        print(f"Click {click_count} detected! Mean: {mean_abs_value:.1f}")
+                        left_click()  # This will also play the sound
+                
+                # Put filtered data in output queue
+                output_queue.put(filtered_audio)
+            else:
+                # If it's not a numpy array, pass through unchanged
+                output_queue.put(task)
+                
+            input_queue.task_done()
+        except Exception as e:
+            print(f"Error in audio bandpass filter: {str(e)}")
+    
+    print("audio_bandpass_high_F_filter_stopped")
+
+
+def audio_bandpass_high_F_filter_durations(input_queue, output_queue, stop_event, sound_file=None):
+    import sounddevice as sd
+    import soundfile as sf
+    import threading
+    
+    # Parameters
+    SAMPLE_RATE = 16500  # Sampling rate (Hz)
+    LOWCUT = 7000.0      # Low-frequency cutoff (Hz)
+    HIGHCUT = 8000.0     # High-frequency cutoff (Hz)
+    FILTER_ORDER = 5
+    
+    # Detection parameters
+    WINDOW_DURATION = 0.15  # Length of the window (seconds)
+    MEAN_THRESHOLD = 200    # Mean of absolute values must exceed this
+    WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
+    
+    # Cooldown variables
+    click_count = 0
+    last_click_time = 0.0
+    click_cooldown = 0.40  # seconds to wait before next action sequence
+    
+    # For tracking consecutive windows above threshold
+    consecutive_windows = 0
+    right_button_held = False
+    
+    # Pre-compute filter coefficients
+    nyquist = 0.5 * SAMPLE_RATE
+    low = LOWCUT / nyquist
+    high = HIGHCUT / nyquist
+    b, a = butter(FILTER_ORDER, [low, high], btype='band')
+    
+    # Buffer to maintain context for detection
+    buffer_duration = 0.1  # seconds
+    buffer_size = int(buffer_duration * SAMPLE_RATE)
+    context_buffer = np.zeros(buffer_size)
+    
+    # Load sound file if provided
+    try:
+        if sound_file:
+            click_sound_data, click_sound_samplerate = sf.read(sound_file)
+            print(f"Loaded sound file: {sound_file}")
+        else:
+            click_sound_data = None
+    except Exception as e:
+        print(f"Warning: Could not load sound file ({e}). Will use default sounds.")
+        click_sound_data = None
+    
+    # Functions to play different sounds
+    def play_sound(frequency=1000, duration=0.1, volume=0.5):
+        try:
+            if click_sound_data is not None:
+                sd.play(click_sound_data, click_sound_samplerate)
+            else:
+                # Generate a simple beep
+                t = np.linspace(0, duration, int(duration * 44100), False)
+                beep = volume * np.sin(2 * np.pi * frequency * t)
+                sd.play(beep, 44100)
+        except Exception as e:
+            print(f"Error playing sound: {e}")
+    
+    # Function to check if mean is above threshold
+    def is_above_threshold(signal):
+        if len(signal) < WINDOW_SIZE:
+            window = signal
+        else:
+            window = signal[-WINDOW_SIZE:]
+        
+        mean_abs = np.mean(np.abs(window))
+        return mean_abs > MEAN_THRESHOLD, mean_abs
+    
+    # Mouse control functions
+    mouse = Controller()
+    
+    def left_click():
+        mouse.click(Button.left)
+        threading.Thread(target=play_sound, args=(1000, 0.1, 0.5), daemon=True).start()
+        print("Left click")
+    
+    def left_double_click():
+        mouse.click(Button.left, 2)
+        threading.Thread(target=play_sound, args=(1200, 0.1, 0.5), daemon=True).start()
+        print("Double left click")
+    
+    def right_click():
+        mouse.click(Button.right)
+        threading.Thread(target=play_sound, args=(800, 0.1, 0.5), daemon=True).start()
+        print("Right click")
+    
+    def toggle_right_click_hold():
+        nonlocal right_button_held
+        if not right_button_held:
+            mouse.press(Button.right)
+            right_button_held = True
+            threading.Thread(target=play_sound, args=(600, 0.2, 0.5), daemon=True).start()
+            print("Right button pressed and HELD")
+        else:
+            mouse.release(Button.right)
+            right_button_held = False
+            threading.Thread(target=play_sound, args=(600, 0.1, 0.3), daemon=True).start()
+            print("Right button RELEASED")
+    
+    # Initialize filter state for lfilter
+    zi = np.zeros(max(len(a), len(b)) - 1)
+    
+    print(f"Audio click detection active with mean threshold: {MEAN_THRESHOLD}")
+    print(f"1 window above threshold: Left Click")
+    print(f"2 consecutive windows: Double Left Click")
+    print(f"3 consecutive windows: Right Click")
+    print(f"4+ consecutive windows: Toggle Right Button Hold")
+    print("Listening for high-frequency sounds (7-8 kHz)...")
+    
+    # For tracking sound on/off transitions
+    sound_on = False
+    action_performed = False
+    
+    while not stop_event.is_set():
+        try:
+            # Get audio data from input queue
+            try:
+                task = input_queue.get(timeout=0.005)
+            except queue.Empty:
+                # If we have sound_on but no new data, check if we should end the current sound
+                if sound_on and time.time() - last_click_time > 0.1:
+                    sound_on = False
+                    consecutive_windows = 0
+                continue
+            
+            if isinstance(task, np.ndarray):
+                # Apply bandpass filter
+                filtered_audio, zi = lfilter(b, a, task, zi=zi)
+                
+                # Update the context buffer
+                if len(filtered_audio) < buffer_size:
+                    context_buffer = np.roll(context_buffer, -len(filtered_audio))
+                    context_buffer[-len(filtered_audio):] = filtered_audio
+                else:
+                    context_buffer = filtered_audio[-buffer_size:]
+                
+                # Check if we're above threshold
+                above_threshold, mean_value = is_above_threshold(context_buffer)
+                
+                now = time.time()
+                
+                # Logic for tracking consecutive windows and performing actions
+                if above_threshold:
+                    if not sound_on:
+                        # New sound started
+                        sound_on = True
+                        consecutive_windows = 1
+                        action_performed = False
+                        last_click_time = now
+                    else:
+                        # Continuing sound
+                        if now - last_click_time > WINDOW_DURATION:
+                            consecutive_windows += 1
+                            last_click_time = now
+                else:
+                    # Sound has ended, perform action if not already done
+                    if sound_on and not action_performed and consecutive_windows > 0:
+                        print("consecutive_windows: ", consecutive_windows)
+                        # Perform the appropriate action based on consecutive windows
+                        if consecutive_windows == 1:
+                            left_click()
+                        elif consecutive_windows == 2:
+                            left_double_click()
+                        elif consecutive_windows == 3:
+                            right_click()
+                        elif consecutive_windows >= 4:
+                            toggle_right_click_hold()
+                                
+                        action_performed = True
+                        click_count += 1
+                            
+                    sound_on = False
+                    consecutive_windows = 0
+                
+                # Put filtered data in output queue
+                output_queue.put(filtered_audio)
+            else:
+                # Pass through non-numpy arrays unchanged
+                output_queue.put(task)
+                
+            input_queue.task_done()
+            
+        except Exception as e:
+            print(f"Error in audio bandpass filter: {str(e)}")
+    
+    # Make sure to release the right button if it's held when stopping
+    if right_button_held:
+        mouse.release(Button.right)
+        print("Right button released (cleanup)")
+    
+    print("audio_bandpass_high_F_filter_stopped")
+
+def audio_bandpass_high_F_filter_durations2(input_queue, output_queue, stop_event, sound_file=None):    
+    # Parameters
+    SAMPLE_RATE = 16500  # Sampling rate (Hz)
+    LOWCUT = 7000.0      # Low-frequency cutoff (Hz)
+    HIGHCUT = 8000.0     # High-frequency cutoff (Hz)
+    FILTER_ORDER = 5
+    
+    # Detection parameters
+    WINDOW_DURATION = 0.4  # Length of the window (seconds)
+    MEAN_THRESHOLD = 200    # Mean of absolute values must exceed this
+    WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
+    
+    # For tracking consecutive windows above threshold
+    consecutive_windows = 0
+    right_button_held = False
+    left_button_held = False
+    
+    # Pre-compute filter coefficients
+    nyquist = 0.5 * SAMPLE_RATE
+    low = LOWCUT / nyquist
+    high = HIGHCUT / nyquist
+    b, a = butter(FILTER_ORDER, [low, high], btype='band')
+    
+    # Buffer to maintain context for detection
+    buffer_duration = 0.1  # seconds
+    buffer_size = int(buffer_duration * SAMPLE_RATE)
+    context_buffer = np.zeros(buffer_size)
+    
+    # Load sound file if provided
+    try:
+        if sound_file:
+            click_sound_data, click_sound_samplerate = sf.read(sound_file)
+            print(f"Loaded sound file: {sound_file}")
+        else:
+            click_sound_data = None
+    except Exception as e:
+        print(f"Warning: Could not load sound file ({e}). Will use default sounds.")
+        click_sound_data = None
+    
+    # Functions to play different sounds without threading
+    def play_sound(frequency=1000, duration=0.1, volume=0.5):
+        try:
+            if click_sound_data is not None:
+                sd.play(click_sound_data, click_sound_samplerate)
+            else:
+                # Generate a simple beep
+                # The 'duration' parameter here controls how long the sound plays
+                t = np.linspace(0, duration, int(duration * 44100), False)
+                beep = volume * np.sin(2 * np.pi * frequency * t)
+                sd.play(beep, 44100)
+        except Exception as e:
+            print(f"Error playing sound: {e}")
+    
+    # Function to check if mean is above threshold
+    def is_above_threshold(signal):
+        if len(signal) < WINDOW_SIZE:
+            window = signal
+        else:
+            window = signal[-WINDOW_SIZE:]
+        
+        mean_abs = np.mean(np.abs(window))
+        return mean_abs > MEAN_THRESHOLD, mean_abs
+    
+    # Mouse control functions
+    mouse = Controller()
+    
+    def left_click():
+        nonlocal left_button_held
+        nonlocal right_button_held
+        left_button_held = False
+        right_button_held = False
+        mouse.click(Button.left)
+        play_sound(1200, 0.1, 0.5)
+        print("Left click")
+        
+    
+    def left_double_click():
+        nonlocal left_button_held
+        nonlocal right_button_held
+        left_button_held = False
+        right_button_held = False
+        mouse.click(Button.left, 2)
+        play_sound(1600, 0.1, 0.5)
+        print("Double left click")
+    
+    def right_click():
+        nonlocal left_button_held
+        nonlocal right_button_held
+        left_button_held = False
+        right_button_held = False
+        mouse.click(Button.right)
+        play_sound(800, 0.1, 0.5)
+        print("Right click")
+    
+    def toggle_right_click_hold():
+        nonlocal right_button_held
+        if not right_button_held:
+            mouse.press(Button.right)
+            right_button_held = True
+            play_sound(600, 0.4, 0.5)  # Longer sound (0.2s) for press
+            print("Right button pressed and HELD")
+        else:
+            mouse.release(Button.right)
+            right_button_held = False
+            play_sound(600, 0.3, 0.3)  # Shorter sound (0.1s) for release
+            print("Right button RELEASED")
+
+    def toggle_left_click_hold():
+        nonlocal left_button_held
+        if not left_button_held:
+            mouse.press(Button.left)
+            left_button_held = True
+            play_sound(600, 0.4, 0.5)
+            print("Left button pressed and HELD")
+        else:
+            mouse.release(Button.left)
+            left_button_held = False
+            play_sound(600, 0.3, 0.3)
+            print("Left button RELEASED")
+    
+    # Initialize filter state for lfilter
+    zi = np.zeros(max(len(a), len(b)) - 1)
+    
+    print(f"Audio click detection active with mean threshold: {MEAN_THRESHOLD}")
+    print(f"1 window above threshold: Left Click")
+    print(f"2 consecutive windows: Double Left Click")
+    print(f"3 consecutive windows: Right Click")
+    print(f"4+ consecutive windows: Toggle Right Button Hold")
+    print("Listening for high-frequency sounds (7-8 kHz)...")
+    
+    # For improved sound duration tracking
+    sound_start_time = None
+    above_threshold_last_time = 0
+    current_mean = 0
+    
+    # State machine variables
+    waiting_for_sound = True  # Initial state: waiting for sound to begin
+    sound_in_progress = False
+    
+    # Minimum time (seconds) sound must be below threshold to consider it ended
+    SOUND_END_GAP = 0.1
+    
+    # Wait time between consecutive windows for counting
+    WINDOW_COUNT_INTERVAL = WINDOW_DURATION * 0.75  # No overlap
+    
+    while not stop_event.is_set():
+        try:
+            # Get audio data from input queue
+            try:
+                task = input_queue.get(timeout=0.005)
+            except queue.Empty:
+                # Check if we need to handle a sound ending
+                now = time.time()
+                if sound_in_progress and (now - above_threshold_last_time) > SOUND_END_GAP:
+                    # Sound has been below threshold long enough - consider it ended
+                    print(f"Sound ended. Duration: {above_threshold_last_time - sound_start_time:.2f}s, Count: {consecutive_windows}")
+                    
+                    # Perform action based on window count
+                    if consecutive_windows == 1:
+                        left_click()
+                    elif consecutive_windows == 2:
+                        left_double_click()
+                    elif consecutive_windows == 3:
+                        right_click()
+                    elif consecutive_windows >= 4:
+                        toggle_left_click_hold()
+                    
+                    # Reset state for next sound
+                    sound_in_progress = False
+                    waiting_for_sound = True
+                    consecutive_windows = 0
+                
+                continue
+            
+            if isinstance(task, np.ndarray):
+                # Apply bandpass filter
+                filtered_audio, zi = lfilter(b, a, task, zi=zi)
+                
+                # Update the context buffer
+                if len(filtered_audio) < buffer_size:
+                    context_buffer = np.roll(context_buffer, -len(filtered_audio))
+                    context_buffer[-len(filtered_audio):] = filtered_audio
+                else:
+                    context_buffer = filtered_audio[-buffer_size:]
+                
+                # Check if we're above threshold
+                above_threshold, mean_value = is_above_threshold(context_buffer)
+                current_mean = mean_value  # Store for debugging if needed
+                
+                now = time.time()
+                
+                # Improved state machine for sound detection
+                if above_threshold:
+                    above_threshold_last_time = now
+                    
+                    if waiting_for_sound:
+                        # Start of a new sound
+                        sound_start_time = now
+                        consecutive_windows = 1
+                        sound_in_progress = True
+                        waiting_for_sound = False
+                        print(f"Sound started. Mean: {mean_value:.1f}")
+                    
+                    elif sound_in_progress:
+                        # Sound continuing - check if we should count another window
+                        sound_duration = now - sound_start_time
+                        
+                        # Calculate expected window count based on duration
+                        expected_windows = int(sound_duration / WINDOW_COUNT_INTERVAL) + 1
+                        
+                        # Update window count if needed
+                        if expected_windows > consecutive_windows:
+                            consecutive_windows = expected_windows
+                            print(f"Window count increased to {consecutive_windows}")
+                
+                # Put filtered data in output queue
+                output_queue.put(filtered_audio)
+            else:
+                # Pass through non-numpy arrays unchanged
+                output_queue.put(task)
+                
+            input_queue.task_done()
+            
+        except Exception as e:
+            print(f"Error in audio bandpass filter: {str(e)}")
+    
+    # Make sure to release the right button if it's held when stopping
+    if right_button_held:
+        mouse.release(Button.right)
+        print("Right button released (cleanup)")
+    
+    print("audio_bandpass_high_F_filter_stopped")
+
+
+def audio_bandpass_high_F_filter_durations3(input_queue, output_queue, stop_event, sound_file=None):    
+    # Parameters
+    SAMPLE_RATE = 16500  # Sampling rate (Hz)
+    LOWCUT = 7000.0      # Low-frequency cutoff (Hz)
+    HIGHCUT = 8000.0     # High-frequency cutoff (Hz)
+    FILTER_ORDER = 5
+    
+    # Detection parameters
+    WINDOW_DURATION = 0.3  # Length of the window (seconds)
+    MEAN_THRESHOLD = 190    # Mean of absolute values must exceed this
+    WINDOW_SIZE = int(WINDOW_DURATION * SAMPLE_RATE)
+    
+    # For tracking consecutive windows above threshold
+    consecutive_windows = 0
+    right_button_held = False
+    left_button_held = False
+    
+    # Pre-compute filter coefficients
+    nyquist = 0.5 * SAMPLE_RATE
+    low = LOWCUT / nyquist
+    high = HIGHCUT / nyquist
+    b, a = butter(FILTER_ORDER, [low, high], btype='band')
+    
+    # Buffer to maintain context for detection
+    buffer_duration = 0.1  # seconds
+    buffer_size = int(buffer_duration * SAMPLE_RATE)
+    context_buffer = np.zeros(buffer_size)
+    
+    # Load sound file if provided
+    try:
+        if sound_file:
+            click_sound_data, click_sound_samplerate = sf.read(sound_file)
+            print(f"Loaded sound file: {sound_file}")
+        else:
+            click_sound_data = None
+    except Exception as e:
+        print(f"Warning: Could not load sound file ({e}). Will use default sounds.")
+        click_sound_data = None
+    
+    # Functions to play different sounds without threading
+    def play_sound(frequency=1000, duration=0.1, volume=0.5):
+        try:
+            if click_sound_data is not None:
+                sd.play(click_sound_data, click_sound_samplerate)
+            else:
+                # Generate a simple beep
+                t = np.linspace(0, duration, int(duration * 44100), False)
+                beep = volume * np.sin(2 * np.pi * frequency * t)
+                sd.play(beep, 44100)
+        except Exception as e:
+            print(f"Error playing sound: {e}")
+    
+    # Function to check if mean is above threshold
+    def is_above_threshold(signal):
+        if len(signal) < WINDOW_SIZE:
+            window = signal
+        else:
+            window = signal[-WINDOW_SIZE:]
+        
+        mean_abs = np.mean(np.abs(window))
+        return mean_abs > MEAN_THRESHOLD, mean_abs
+    
+    # Mouse control functions
+    mouse = Controller()
+    
+    def left_click():
+        nonlocal left_button_held
+        nonlocal right_button_held
+        left_button_held = False
+        right_button_held = False
+        mouse.click(Button.left)
+        play_sound(1200, 0.1, 0.5)
+        print("Left click")
+        
+    def left_double_click():
+        nonlocal left_button_held
+        nonlocal right_button_held
+        left_button_held = False
+        right_button_held = False
+        mouse.click(Button.left, 2)
+        play_sound(1600, 0.1, 0.5)
+        print("Double left click")
+    
+    def right_click():
+        nonlocal left_button_held
+        nonlocal right_button_held
+        left_button_held = False
+        right_button_held = False
+        mouse.click(Button.right)
+        play_sound(800, 0.1, 0.5)
+        print("Right click")
+    
+    def toggle_right_click_hold():
+        nonlocal right_button_held
+        if not right_button_held:
+            mouse.press(Button.right)
+            right_button_held = True
+            play_sound(600, 0.4, 0.5)
+            print("Right button pressed and HELD")
+        else:
+            mouse.release(Button.right)
+            right_button_held = False
+            play_sound(600, 0.3, 0.3)
+            print("Right button RELEASED")
+
+    def toggle_left_click_hold():
+        nonlocal left_button_held
+        if not left_button_held:
+            mouse.press(Button.left)
+            left_button_held = True
+            play_sound(600, 0.4, 0.5)
+            print("Left button pressed and HELD")
+        else:
+            mouse.release(Button.left)
+            left_button_held = False
+            play_sound(600, 0.3, 0.3)
+            print("Left button RELEASED")
+    
+    # Initialize filter state for lfilter
+    zi = np.zeros(max(len(a), len(b)) - 1)
+    
+    print(f"Audio click detection active with mean threshold: {MEAN_THRESHOLD}")
+    print(f"1 window above threshold: Left Click")
+    print(f"2 consecutive windows: Double Left Click")
+    print(f"3 consecutive windows: Right Click")
+    print(f"4+ consecutive windows: Toggle Left Button Hold")
+    print("Listening for high-frequency sounds (7-8 kHz)...")
+    
+    # State machine variables - simplified direct window approach
+    currently_above_threshold = False
+    window_count = 0
+    
+    # Time to wait before checking for next window
+    WINDOW_CHECK_INTERVAL = WINDOW_DURATION * 1 
+    last_window_check_time = 0
+    
+    # Gap time to wait for signal to go below threshold before starting a new sequence
+    GAP_AFTER_ACTION = 0.4  # seconds to wait after performing an action
+    last_action_time = 0
+    
+    while not stop_event.is_set():
+        try:
+            # Get audio data from input queue
+            try:
+                task = input_queue.get(timeout=0.005)
+            except queue.Empty:
+                # If we're counting windows but signal stopped, finalize the action
+                now = time.time()
+                if window_count > 0 and now - last_window_check_time > WINDOW_CHECK_INTERVAL * 2:
+                    print(f"Signal ended after {window_count} windows")
+                    
+                    # Perform action based on window count
+                    if window_count == 1:
+                        left_click()
+                    elif window_count == 2:
+                        left_double_click()
+                    elif window_count == 3:
+                        right_click()
+                    elif window_count >= 4:
+                        toggle_left_click_hold()
+                    
+                    # Reset window count
+                    window_count = 0
+                    last_action_time = now
+                
+                continue
+            
+            if isinstance(task, np.ndarray):
+                # Apply bandpass filter
+                filtered_audio, zi = lfilter(b, a, task, zi=zi)
+                
+                # Update the context buffer
+                if len(filtered_audio) < buffer_size:
+                    context_buffer = np.roll(context_buffer, -len(filtered_audio))
+                    context_buffer[-len(filtered_audio):] = filtered_audio
+                else:
+                    context_buffer = filtered_audio[-buffer_size:]
+                
+                # Check if we're above threshold
+                above_threshold, mean_value = is_above_threshold(context_buffer)
+                
+                now = time.time()
+                
+                # Only process if enough time has passed since the last action
+                if now - last_action_time > GAP_AFTER_ACTION:
+                    # Time-based window checking
+                    if now - last_window_check_time > WINDOW_CHECK_INTERVAL:
+                        last_window_check_time = now
+                        
+                        if above_threshold:
+                            # We found a window above threshold
+                            if window_count == 0:
+                                # First window above threshold
+                                print(f"First window above threshold. Mean: {mean_value:.1f}")
+                            else:
+                                # Another consecutive window above threshold
+                                print(f"Window {window_count+1} above threshold. Mean: {mean_value:.1f}")
+                            
+                            # Increment window count
+                            window_count += 1
+                        else:
+                            # We found a window below threshold
+                            if window_count > 0:
+                                # If we had at least one window above threshold, perform action
+                                print(f"Signal went below threshold after {window_count} windows")
+                                
+                                # Perform action based on window count
+                                if window_count == 1:
+                                    left_click()
+                                elif window_count == 2:
+                                    left_double_click()
+                                elif window_count == 3:
+                                    right_click()
+                                elif window_count >= 4:
+                                    toggle_left_click_hold()
+                                
+                                # Reset window count
+                                window_count = 0
+                                last_action_time = now
+                
+                # Put filtered data in output queue
+                output_queue.put(filtered_audio)
+            else:
+                # Pass through non-numpy arrays unchanged
+                output_queue.put(task)
+                
+            input_queue.task_done()
+            
+        except Exception as e:
+            print(f"Error in audio bandpass filter: {str(e)}")
+    
+    # Make sure to release buttons if they're held when stopping
+    if right_button_held:
+        mouse.release(Button.right)
+        print("Right button released (cleanup)")
+    if left_button_held:
+        mouse.release(Button.left)
+        print("Left button released (cleanup)")
+    
+    print("audio_bandpass_high_F_filter_stopped")
+
 
 def REK_filter(input_queue, output_queue, stop_event):
     print("rek_filter run")
