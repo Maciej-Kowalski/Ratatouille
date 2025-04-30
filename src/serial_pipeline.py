@@ -207,10 +207,10 @@ class ClickMouseBuffered:
             data = self.ser.read(AUDIO_BUFFERED_PACKET_LENGTH)
             if data and data[0] == START_BYTE:  # Check for start byte (128)
                     self.unpack(data[1:AUDIO_BUFFERED_PACKET_LENGTH])
-            elif data:
-                print("First byte - ", data[0])
-            else:
-                print("No data")
+            #elif data:
+                #print("First byte - ", data[0])
+            #else:
+                #print("No data")
         print("start_stream_stopped")
 
     def unpack(self, data):
