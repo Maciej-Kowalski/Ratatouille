@@ -6,6 +6,10 @@ from filters import no_filter
 from filters import complementary_filter
 from filters import EK_filter
 from filters import audio_bandpass_high_F_filter
+from filters import audio_bandpass_high_F_filter_mean
+from filters import audio_bandpass_high_F_filter_durations
+from filters import audio_bandpass_high_F_filter_durations2
+from filters import audio_bandpass_high_F_filter_durations3
 from outputs import print_counter_audio
 from outputs import print_counter_audio_buffered
 from outputs import timing_audio_buffered
@@ -28,6 +32,7 @@ def audioBuff():
             "baudrate": 115200,
             "timeout": 1
         }
+
         prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=print_continuous_audio)
         #prototype = ClickMouseBuffered(serial_settings, filter=audio_bandpass_high_F_filter, output=record_and_plot_audio)
         prototype.start()
@@ -42,6 +47,7 @@ def audioBufftiming():
             "timeout": 1
         }
         prototype = ClickMouseBuffered(serial_settings, filter=no_filter, output=timing_audio_buffered)
+
         #prototype = ClickMouseBuffered(serial_settings, filter=audio_bandpass_high_F_filter, output=record_and_plot_audio)
         prototype.start()
     except Exception as e:
