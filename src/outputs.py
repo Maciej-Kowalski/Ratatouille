@@ -497,17 +497,15 @@ def plot_audio_with_fft(input_queue, stop_event, _):
 
 
 def record_and_plot_audio(output_queue, stop_event, filename=None):
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from scipy import signal
-    import queue
-    import time
-    import os
+    import soundfile as sf  # For saving as .wav file
     
     # Handle the filename parameter correctly
     if filename is None or not isinstance(filename, (str, bytes, os.PathLike)):
         # Default filename if none provided or invalid type
-        filename = "recorded_audio.npy"
+        filename = "recorded_audio.wav"  # Changed to .wav extension
+    elif not str(filename).lower().endswith('.wav'):
+        # Ensure filename has .wav extension
+        filename = str(filename) + '.wav'
     
     # Parameters
     RECORD_DURATION = 10  # seconds
@@ -566,11 +564,18 @@ def record_and_plot_audio(output_queue, stop_event, filename=None):
                     # If chunks are scalars or single-element arrays
                     full_audio = np.array(audio_buffer).flatten()
                 
-                # Save to file
-                np.save(filename, full_audio)
+                # Normalize audio to float between -1 and 1 for WAV file
+                # First check the range of values to see if normalization is needed
+                max_val = np.max(np.abs(full_audio))
+                if max_val > 1.0:
+                    full_audio = full_audio / max_val
+                
+                # Save as WAV file
+                sf.write(filename, full_audio, SAMPLE_RATE)
                 
                 actual_duration = len(full_audio) / SAMPLE_RATE
                 print(f"Recording complete! Saved {len(full_audio)} samples ({actual_duration:.2f} seconds) to {filename}")
+                print(f"You can now play the recording with any audio player.")
                 
                 # Simple analysis first
                 print("Generating basic visualization...")
