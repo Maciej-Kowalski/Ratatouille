@@ -45,7 +45,7 @@ def audioBuff():
 def audioBufftiming():
     try:
         serial_settings = {
-            "port": "COM19",
+            "port": "COM16",
             "baudrate": 115200,
             "timeout": 1
         }
@@ -109,4 +109,6 @@ def FusionTiming():
         print(e)
 print("Start")
 #Fusion()
-FusionTiming()
+#FusionTiming()
+audioBufftiming()
+#audioBuff()
