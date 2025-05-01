@@ -731,6 +731,89 @@ def timing_audio_buffered(input_queue, stop_event, buffer_size):
 
     print(f"Data collection complete. Saved {len(raw_data)} samples.")
 
+def timing_IMU(input_queue, stop_event, buffer_size):
+    t_start = time.perf_counter()
+    t_last_packet = t_start
+    raw_data = []  # Array to store all raw data points
+    time_differences = []
+    packets_received = 0
+    first_packet_first_element = None
+    hundredth_packet_last_element = None
+
+    while not stop_event.is_set() and packets_received < 100:
+        try:
+            timestamp = input_queue.get(timeout=0.1)  # Get timestamp
+            packets_received += 1
+            
+            # Record timing information
+            t_now = time.perf_counter()
+
+            if packets_received > 1:
+                time_elapsed = t_now - t_last_packet
+                time_differences.append(time_elapsed)
+            
+            # Store ALL data points from the packet with continuous numbering
+            raw_data.append([
+                    timestamp,             # Sample value
+                    packets_received,   # Packet number
+                    t_now - t_start     # Time since start
+            ])
+            
+            t_last_packet = t_now
+            input_queue.task_done()
+        except queue.Empty:
+            continue
+
+    frequency = input("Frequency: ")
+
+    # Calculate statistics
+    if len(time_differences) > 0:
+        time_array = np.array(time_differences)
+        mean_time = np.mean(time_array)
+        std_time = np.std(time_array)
+        min_time = np.min(time_array)
+        max_time = np.max(time_array)
+        percentile_10 = np.percentile(time_array, 10)
+        percentile_90 = np.percentile(time_array, 90)
+    else:
+        mean_time = std_time = min_time = max_time = percentile_10 = percentile_90 = 0
+
+    # Write summary data to timing_data.csv (append mode)
+    summary_data = [
+        frequency,
+        buffer_size,
+        mean_time,
+        std_time,
+        min_time,
+        percentile_10,
+        percentile_90,
+        max_time
+    ]
+    
+    # Write summary data (append to file)
+    file_exists = os.path.isfile('timing_data_IMU.csv')
+    with open("timing_data_IMU.csv", "a", newline="") as csvfile:
+        csv_writer = csv.writer(csvfile)
+        if not file_exists:
+            csv_writer.writerow([
+                "Frequency", "Buffer Size", "Mean Time", "Std Dev Time", 
+                "Min Time", "10th Percentile", "90th Percentile", "Max Time"
+            ])
+        csv_writer.writerow(summary_data)
+
+    # Write ALL raw data points to separate file
+    raw_filename = f"raw_data_IMU_{frequency}_{buffer_size}.csv"
+    with open(raw_filename, "w", newline="") as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow([ 
+            "Sample Value", 
+            "Packet Number", 
+            "Time Since Start (s)"
+        ])
+        csv_writer.writerows(raw_data)
+
+    print(f"Data collection complete. Saved {len(raw_data)} samples.")
+
 def test_monitors():
     m = get_monitors()
     print(m[0].width)
