@@ -20,6 +20,7 @@ RM := rm -rf
 -include Drivers/STM32WBxx_HAL_Driver/Src/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
+-include Core/Inc/BMI270_SensorAPI-master/subdir.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)
@@ -42,40 +43,40 @@ $(wildcard ../makefile.init) \
 $(wildcard ../makefile.targets) \
 
 
-BUILD_ARTIFACT_NAME := PCB_USB_ADC_TIM
+BUILD_ARTIFACT_NAME := PCB_USB_ADC_TIM_RTOS_IMU
 BUILD_ARTIFACT_EXTENSION := elf
 BUILD_ARTIFACT_PREFIX :=
 BUILD_ARTIFACT := $(BUILD_ARTIFACT_PREFIX)$(BUILD_ARTIFACT_NAME)$(if $(BUILD_ARTIFACT_EXTENSION),.$(BUILD_ARTIFACT_EXTENSION),)
 
 # Add inputs and outputs from these tool invocations to the build variables 
 EXECUTABLES += \
-PCB_USB_ADC_TIM.elf \
+PCB_USB_ADC_TIM_RTOS_IMU.elf \
 
 MAP_FILES += \
-PCB_USB_ADC_TIM.map \
+PCB_USB_ADC_TIM_RTOS_IMU.map \
 
 SIZE_OUTPUT += \
 default.size.stdout \
 
 OBJDUMP_LIST += \
-PCB_USB_ADC_TIM.list \
+PCB_USB_ADC_TIM_RTOS_IMU.list \
 
 OBJCOPY_HEX += \
-PCB_USB_ADC_TIM.hex \
+PCB_USB_ADC_TIM_RTOS_IMU.hex \
 
 OBJCOPY_BIN += \
-PCB_USB_ADC_TIM.bin \
+PCB_USB_ADC_TIM_RTOS_IMU.bin \
 
 
 # All Target
 all: main-build
 
 # Main-build Target
-main-build: PCB_USB_ADC_TIM.elf secondary-outputs
+main-build: PCB_USB_ADC_TIM_RTOS_IMU.elf secondary-outputs
 
 # Tool invocations
-PCB_USB_ADC_TIM.elf PCB_USB_ADC_TIM.map: $(OBJS) $(USER_OBJS) C:\Users\joham\STM32CubeIDE\workspace_1.16.1\PCB_USB_ADC_TIM\STM32WB55RGVX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "PCB_USB_ADC_TIM.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\STM32CubeIDE\workspace_1.16.1\PCB_USB_ADC_TIM\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PCB_USB_ADC_TIM.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+PCB_USB_ADC_TIM_RTOS_IMU.elf PCB_USB_ADC_TIM_RTOS_IMU.map: $(OBJS) $(USER_OBJS) C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\PCB_USB_ADC_TIM_RTOS_IMU\STM32WB55RGVX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "PCB_USB_ADC_TIM_RTOS_IMU.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\joham\Documents\Code\4thYearProject\Ratatouille\firmware\PCB_USB_ADC_TIM_RTOS_IMU\STM32WB55RGVX_FLASH.ld" --specs=nosys.specs -Wl,-Map="PCB_USB_ADC_TIM_RTOS_IMU.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -84,24 +85,24 @@ default.size.stdout: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
 	@echo 'Finished building: $@'
 	@echo ' '
 
-PCB_USB_ADC_TIM.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "PCB_USB_ADC_TIM.list"
+PCB_USB_ADC_TIM_RTOS_IMU.list: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objdump -h -S $(EXECUTABLES) > "PCB_USB_ADC_TIM_RTOS_IMU.list"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-PCB_USB_ADC_TIM.hex: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objcopy  -O ihex $(EXECUTABLES) "PCB_USB_ADC_TIM.hex"
+PCB_USB_ADC_TIM_RTOS_IMU.hex: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O ihex $(EXECUTABLES) "PCB_USB_ADC_TIM_RTOS_IMU.hex"
 	@echo 'Finished building: $@'
 	@echo ' '
 
-PCB_USB_ADC_TIM.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "PCB_USB_ADC_TIM.bin"
+PCB_USB_ADC_TIM_RTOS_IMU.bin: $(EXECUTABLES) makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-objcopy  -O binary $(EXECUTABLES) "PCB_USB_ADC_TIM_RTOS_IMU.bin"
 	@echo 'Finished building: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) PCB_USB_ADC_TIM.bin PCB_USB_ADC_TIM.elf PCB_USB_ADC_TIM.hex PCB_USB_ADC_TIM.list PCB_USB_ADC_TIM.map default.size.stdout
+	-$(RM) PCB_USB_ADC_TIM_RTOS_IMU.bin PCB_USB_ADC_TIM_RTOS_IMU.elf PCB_USB_ADC_TIM_RTOS_IMU.hex PCB_USB_ADC_TIM_RTOS_IMU.list PCB_USB_ADC_TIM_RTOS_IMU.map default.size.stdout
 	-@echo ' '
 
 secondary-outputs: $(SIZE_OUTPUT) $(OBJDUMP_LIST) $(OBJCOPY_HEX) $(OBJCOPY_BIN)
